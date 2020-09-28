@@ -5,8 +5,7 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+using Squidex.Infrastructure.Validation;
 
 namespace Squidex.Areas.Api.Controllers.Schemas.Models
 {
@@ -15,8 +14,8 @@ namespace Squidex.Areas.Api.Controllers.Schemas.Models
         /// <summary>
         /// The name of the field. Must be unique within the schema.
         /// </summary>
-        [Required]
-        [RegularExpression("^[a-zA-Z0-9]+(\\-[a-zA-Z0-9]+)*$")]
+        [LocalizedRequired]
+        [LocalizedRegularExpression("^[a-zA-Z0-9]+(\\-[a-zA-Z0-9]+)*$")]
         public string Name { get; set; }
 
         /// <summary>
@@ -42,12 +41,12 @@ namespace Squidex.Areas.Api.Controllers.Schemas.Models
         /// <summary>
         /// The field properties.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public FieldPropertiesDto Properties { get; set; }
 
         /// <summary>
         /// The nested fields.
         /// </summary>
-        public List<UpsertSchemaNestedFieldDto>? Nested { get; set; }
+        public UpsertSchemaNestedFieldDto[]? Nested { get; set; }
     }
 }

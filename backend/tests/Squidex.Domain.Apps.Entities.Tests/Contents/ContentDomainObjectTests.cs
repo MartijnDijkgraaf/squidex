@@ -5,7 +5,6 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Linq;
 using System.Threading.Tasks;
 using FakeItEasy;
@@ -31,7 +30,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 {
     public class ContentDomainObjectTests : HandlerTestBase<ContentState>
     {
-        private readonly Guid contentId = Guid.NewGuid();
+        private readonly DomainId contentId = DomainId.NewGuid();
         private readonly IAppEntity app;
         private readonly IAppProvider appProvider = A.Fake<IAppProvider>();
         private readonly IContentWorkflow contentWorkflow = A.Fake<IContentWorkflow>(x => x.Wrapping(new DefaultContentWorkflow()));
@@ -67,9 +66,9 @@ namespace Squidex.Domain.Apps.Entities.Contents
         private readonly NamedContentData patched;
         private readonly ContentDomainObject sut;
 
-        protected override Guid Id
+        protected override DomainId Id
         {
-            get { return contentId; }
+            get { return DomainId.Combine(AppId, contentId); }
         }
 
         public ContentDomainObjectTests()
@@ -105,7 +104,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
             patched = patch.MergeInto(data);
 
-            var context = new ContentOperationContext(appProvider, Enumerable.Repeat(new DefaultValidatorsFactory(), 1), scriptEngine);
+            var context = new ContentOperationContext(appProvider, Enumerable.Repeat(new DefaultValidatorsFactory(), 1), scriptEngine, A.Fake<ISemanticLog>());
 
             sut = new ContentDomainObject(Store, contentWorkflow, context, A.Dummy<ISemanticLog>());
             sut.Setup(Id);
@@ -172,6 +171,50 @@ namespace Squidex.Domain.Apps.Entities.Contents
             var command = new CreateContent { Data = invalidData };
 
             await Assert.ThrowsAsync<ValidationException>(() => PublishAsync(CreateContentCommand(command)));
+        }
+
+        [Fact]
+        public async Task Upsert_should_create_contnet_when_not_found()
+        {
+            var command = new UpsertContent { Data = data };
+
+            var result = await PublishAsync(CreateContentCommand(command));
+
+            result.ShouldBeEquivalent(sut.Snapshot);
+
+            Assert.Same(data, sut.Snapshot.CurrentVersion.Data);
+
+            LastEvents
+                .ShouldHaveSameEvents(
+                    CreateContentEvent(new ContentCreated { Data = data, Status = Status.Draft })
+                );
+
+            A.CallTo(() => scriptEngine.TransformAsync(ScriptContext(data, null, Status.Draft), "<create-script>", ScriptOptions()))
+                .MustHaveHappened();
+            A.CallTo(() => scriptEngine.ExecuteAsync(A<ScriptVars>._, "<change-script>", ScriptOptions()))
+                .MustNotHaveHappened();
+        }
+
+        [Fact]
+        public async Task Upsert_should_update_contnet_when_found()
+        {
+            var command = new UpsertContent { Data = otherData };
+
+            await ExecuteCreateAsync();
+
+            var result = await PublishAsync(CreateContentCommand(command));
+
+            result.ShouldBeEquivalent(sut.Snapshot);
+
+            Assert.Equal(otherData, sut.Snapshot.CurrentVersion.Data);
+
+            LastEvents
+                .ShouldHaveSameEvents(
+                    CreateContentEvent(new ContentUpdated { Data = otherData })
+                );
+
+            A.CallTo(() => scriptEngine.TransformAsync(ScriptContext(otherData, data, Status.Draft), "<update-script>", ScriptOptions()))
+                .MustHaveHappened();
         }
 
         [Fact]
@@ -587,7 +630,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
             return A<ScriptVars>.That.Matches(x => M(x, newData, oldData, newStatus, oldStatus));
         }
 
-        private ScriptOptions ScriptOptions()
+        private static ScriptOptions ScriptOptions()
         {
             return A<ScriptOptions>.That.Matches(x => x.CanDisallow && x.CanReject && x.AsContext);
         }

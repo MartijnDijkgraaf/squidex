@@ -7,13 +7,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 using NodaTime;
 using Squidex.Domain.Apps.Core.Assets;
 using Squidex.Domain.Apps.Entities.Assets;
 using Squidex.Infrastructure;
 using Squidex.Infrastructure.Reflection;
+using Squidex.Infrastructure.Validation;
 using Squidex.Web;
 
 namespace Squidex.Areas.Api.Controllers.Assets.Models
@@ -23,17 +23,17 @@ namespace Squidex.Areas.Api.Controllers.Assets.Models
         /// <summary>
         /// The id of the asset.
         /// </summary>
-        public Guid Id { get; set; }
+        public DomainId Id { get; set; }
 
         /// <summary>
         /// The id of the parent folder. Empty for files without parent.
         /// </summary>
-        public Guid ParentId { get; set; }
+        public DomainId ParentId { get; set; }
 
         /// <summary>
         /// The file name.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string FileName { get; set; }
 
         /// <summary>
@@ -49,37 +49,37 @@ namespace Squidex.Areas.Api.Controllers.Assets.Models
         /// <summary>
         /// The slug.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string Slug { get; set; }
 
         /// <summary>
         /// The mime type.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string MimeType { get; set; }
 
         /// <summary>
         /// The file type.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string FileType { get; set; }
 
         /// <summary>
         /// The formatted text representation of the metadata.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string MetadataText { get; set; }
 
         /// <summary>
         /// The asset metadata.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public AssetMetadata Metadata { get; set; }
 
         /// <summary>
         /// The asset tags.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public HashSet<string>? Tags { get; set; }
 
         /// <summary>
@@ -100,13 +100,13 @@ namespace Squidex.Areas.Api.Controllers.Assets.Models
         /// <summary>
         /// The user that has created the schema.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public RefToken CreatedBy { get; set; }
 
         /// <summary>
         /// The user that has updated the asset.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public RefToken LastModifiedBy { get; set; }
 
         /// <summary>
@@ -200,8 +200,6 @@ namespace Squidex.Areas.Api.Controllers.Assets.Models
             {
                 response.AddDeleteLink("delete", resources.Url<AssetsController>(x => nameof(x.DeleteAsset), values));
             }
-
-            var version = response.FileVersion;
 
             if (!string.IsNullOrWhiteSpace(response.Slug))
             {

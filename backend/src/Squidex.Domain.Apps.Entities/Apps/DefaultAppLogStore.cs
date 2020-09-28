@@ -39,7 +39,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
             this.requestLogStore = requestLogStore;
         }
 
-        public Task LogAsync(Guid appId, RequestLog request)
+        public Task LogAsync(DomainId appId, RequestLog request)
         {
             var storedRequest = new Request
             {
@@ -62,7 +62,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
             return requestLogStore.LogAsync(storedRequest);
         }
 
-        public async Task ReadLogAsync(Guid appId, DateTime fromDate, DateTime toDate, Stream stream, CancellationToken ct = default)
+        public async Task ReadLogAsync(DomainId appId, DateTime fromDate, DateTime toDate, Stream stream, CancellationToken ct = default)
         {
             Guard.NotNull(appId, nameof(appId));
 

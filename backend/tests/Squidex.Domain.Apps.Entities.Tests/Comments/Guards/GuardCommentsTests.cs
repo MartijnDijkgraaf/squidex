@@ -5,7 +5,6 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
 using Squidex.Domain.Apps.Core.TestHelpers;
 using Squidex.Domain.Apps.Entities.Comments.Commands;
@@ -20,7 +19,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
 {
     public class GuardCommentsTests : IClassFixture<TranslationsFixture>
     {
-        private readonly string commentsId = Guid.NewGuid().ToString();
+        private readonly string commentsId = DomainId.NewGuid().ToString();
         private readonly RefToken user1 = new RefToken(RefTokenType.Subject, "1");
         private readonly RefToken user2 = new RefToken(RefTokenType.Subject, "2");
 
@@ -44,7 +43,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanUpdate_should_throw_exception_if_text_not_defined()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new UpdateComment { CommentId = commentId, Actor = user1 };
 
             var events = new List<Envelope<CommentsEvent>>
@@ -59,7 +58,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanUpdate_should_throw_exception_if_comment_from_another_user()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new UpdateComment { CommentId = commentId, Actor = user2, Text = "text2" };
 
             var events = new List<Envelope<CommentsEvent>>
@@ -73,7 +72,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanUpdate_should_throw_exception_if_comment_not_found()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new UpdateComment { CommentId = commentId, Actor = user1 };
 
             var events = new List<Envelope<CommentsEvent>>();
@@ -84,7 +83,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanUpdate_should_throw_exception_if_comment_deleted_found()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new UpdateComment { CommentId = commentId, Actor = user1 };
 
             var events = new List<Envelope<CommentsEvent>>
@@ -99,7 +98,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanUpdate_should_not_throw_exception_if_comment_is_own_notification()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new UpdateComment { CommentId = commentId, Actor = user1, Text = "text2" };
 
             var events = new List<Envelope<CommentsEvent>>
@@ -113,7 +112,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanUpdate_should_not_throw_exception_if_comment_from_same_user()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new UpdateComment { CommentId = commentId, Actor = user1, Text = "text2" };
 
             var events = new List<Envelope<CommentsEvent>>
@@ -127,7 +126,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanDelete_should_throw_exception_if_comment_from_another_user()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new DeleteComment { CommentId = commentId, Actor = user2 };
 
             var events = new List<Envelope<CommentsEvent>>
@@ -141,7 +140,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanDelete_should_throw_exception_if_comment_not_found()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new DeleteComment { CommentId = commentId, Actor = user1 };
 
             var events = new List<Envelope<CommentsEvent>>();
@@ -152,7 +151,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanDelete_should_throw_exception_if_comment_deleted()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new DeleteComment { CommentId = commentId, Actor = user1 };
 
             var events = new List<Envelope<CommentsEvent>>
@@ -167,7 +166,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanDelete_should_not_throw_exception_if_comment_is_own_notification()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new DeleteComment { CommentId = commentId, Actor = user1 };
 
             var events = new List<Envelope<CommentsEvent>>
@@ -181,7 +180,7 @@ namespace Squidex.Domain.Apps.Entities.Comments.Guards
         [Fact]
         public void CanDelete_should_not_throw_exception_if_comment_from_same_user()
         {
-            var commentId = Guid.NewGuid();
+            var commentId = DomainId.NewGuid();
             var command = new DeleteComment { CommentId = commentId, Actor = user1 };
 
             var events = new List<Envelope<CommentsEvent>>

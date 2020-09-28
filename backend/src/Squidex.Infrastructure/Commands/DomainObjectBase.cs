@@ -19,11 +19,11 @@ namespace Squidex.Infrastructure.Commands
         private readonly List<Envelope<IEvent>> uncomittedEvents = new List<Envelope<IEvent>>();
         private readonly ISemanticLog log;
         private bool isLoaded;
-        private Guid id;
+        private DomainId uniqueId;
 
-        public Guid Id
+        public DomainId UniqueId
         {
-            get { return id; }
+            get { return uniqueId; }
         }
 
         public long Version
@@ -40,9 +40,9 @@ namespace Squidex.Infrastructure.Commands
             this.log = log;
         }
 
-        public virtual void Setup(Guid id)
+        public virtual void Setup(DomainId uniqueId)
         {
-            this.id = id;
+            this.uniqueId = uniqueId;
 
             OnSetup();
         }
@@ -60,7 +60,7 @@ namespace Squidex.Infrastructure.Commands
             }
             else
             {
-                var logContext = (id: id.ToString(), name: GetType().Name);
+                var logContext = (id: uniqueId.ToString(), name: GetType().Name);
 
                 using (log.MeasureInformation(logContext, (ctx, w) => w
                     .WriteProperty("action", "ActivateDomainObject")
@@ -83,7 +83,7 @@ namespace Squidex.Infrastructure.Commands
         {
             Guard.NotNull(@event, nameof(@event));
 
-            @event.SetAggregateId(id);
+            @event.SetAggregateId(uniqueId);
 
             if (ApplyEvent(@event, false))
             {
@@ -146,19 +146,41 @@ namespace Squidex.Infrastructure.Commands
             Guard.NotNull(command, nameof(command));
             Guard.NotNull(handler, nameof(handler));
 
+            await EnsureLoadedAsync();
+
+            if (IsDeleted())
+            {
+                throw new DomainException("Object has already been deleted.");
+            }
+
             if (isUpdate)
             {
-                await EnsureLoadedAsync();
+                if (!CanAccept(command))
+                {
+                    throw new DomainException("Invalid command.");
+                }
+            }
+            else
+            {
+                if (Version > EtagVersion.Empty)
+                {
+                    throw new DomainObjectConflictException(uniqueId.ToString());
+                }
+
+                if (!CanAcceptCreation(command))
+                {
+                    throw new DomainException("Invalid command.");
+                }
             }
 
             if (command.ExpectedVersion > EtagVersion.Any && command.ExpectedVersion != Version)
             {
-                throw new DomainObjectVersionException(id.ToString(), Version, command.ExpectedVersion);
+                throw new DomainObjectVersionException(uniqueId.ToString(), Version, command.ExpectedVersion);
             }
 
             if (isUpdate && Version < 0)
             {
-                throw new DomainObjectNotFoundException(id.ToString());
+                throw new DomainObjectNotFoundException(uniqueId.ToString());
             }
 
             var previousSnapshot = Snapshot;
@@ -179,7 +201,7 @@ namespace Squidex.Infrastructure.Commands
                     }
                     else
                     {
-                        result = EntityCreatedResult.Create(id, Version);
+                        result = EntityCreatedResult.Create(uniqueId, Version);
                     }
                 }
 
@@ -197,6 +219,21 @@ namespace Squidex.Infrastructure.Commands
             {
                 ClearUncommittedEvents();
             }
+        }
+
+        protected virtual bool CanAcceptCreation(ICommand command)
+        {
+            return true;
+        }
+
+        protected virtual bool CanAccept(ICommand command)
+        {
+            return true;
+        }
+
+        protected virtual bool IsDeleted()
+        {
+            return false;
         }
 
         protected abstract void RestorePreviousSnapshot(T previousSnapshot, long previousVersion);

@@ -22,7 +22,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Guards
 
             Validate.It(e =>
             {
-                if (command.PatternId == Guid.Empty)
+                if (command.PatternId == DomainId.Empty)
                 {
                     e(Not.Defined(nameof(command.PatternId)), nameof(command.PatternId));
                 }

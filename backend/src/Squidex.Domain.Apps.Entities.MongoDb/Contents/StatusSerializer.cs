@@ -18,7 +18,14 @@ namespace Squidex.Domain.Apps.Entities.MongoDb.Contents
         {
             try
             {
-                BsonSerializer.RegisterSerializer(new StatusSerializer());
+                try
+                {
+                    BsonSerializer.RegisterSerializer(new StatusSerializer());
+                }
+                catch (BsonSerializationException)
+                {
+                    return;
+                }
             }
             catch (BsonSerializationException)
             {

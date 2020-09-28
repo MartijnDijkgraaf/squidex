@@ -5,7 +5,6 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
 using Squidex.Domain.Apps.Core.Contents;
 using Squidex.Domain.Apps.Core.TestHelpers;
@@ -19,7 +18,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Guards
 {
     public class GuardAppWorkflowTests : IClassFixture<TranslationsFixture>
     {
-        private readonly Guid workflowId = Guid.NewGuid();
+        private readonly DomainId workflowId = DomainId.NewGuid();
         private readonly Workflows workflows;
 
         public GuardAppWorkflowTests()
@@ -50,7 +49,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Guards
             var command = new UpdateWorkflow
             {
                 Workflow = Workflow.Empty,
-                WorkflowId = Guid.NewGuid()
+                WorkflowId = DomainId.NewGuid()
             };
 
             Assert.Throws<DomainObjectNotFoundException>(() => GuardAppWorkflows.CanUpdate(workflows, command));
@@ -198,7 +197,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Guards
         [Fact]
         public void CanDelete_should_throw_exception_if_workflow_not_found()
         {
-            var command = new DeleteWorkflow { WorkflowId = Guid.NewGuid() };
+            var command = new DeleteWorkflow { WorkflowId = DomainId.NewGuid() };
 
             Assert.Throws<DomainObjectNotFoundException>(() => GuardAppWorkflows.CanDelete(workflows, command));
         }

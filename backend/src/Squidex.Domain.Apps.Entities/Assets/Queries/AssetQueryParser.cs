@@ -40,13 +40,15 @@ namespace Squidex.Domain.Apps.Entities.Assets.Queries
             Guard.NotNull(tagService, nameof(tagService));
 
             this.jsonSerializer = jsonSerializer;
-            this.options = options.Value;
             this.tagService = tagService;
+
+            this.options = options.Value;
         }
 
         public virtual async ValueTask<ClrQuery> ParseQueryAsync(Context context, Q q)
         {
             Guard.NotNull(context, nameof(context));
+            Guard.NotNull(q, nameof(q));
 
             using (Profiler.TraceMethod<AssetQueryParser>())
             {
@@ -127,7 +129,7 @@ namespace Squidex.Domain.Apps.Entities.Assets.Queries
                 schema.Properties[name.ToCamelCase()] = property;
             }
 
-            AddProperty(nameof(IAssetEntity.Id), JsonObjectType.String, JsonFormatStrings.Guid);
+            AddProperty(nameof(IAssetEntity.Id), JsonObjectType.String);
             AddProperty(nameof(IAssetEntity.Created), JsonObjectType.String, JsonFormatStrings.DateTime);
             AddProperty(nameof(IAssetEntity.CreatedBy), JsonObjectType.String);
             AddProperty(nameof(IAssetEntity.FileHash), JsonObjectType.String);

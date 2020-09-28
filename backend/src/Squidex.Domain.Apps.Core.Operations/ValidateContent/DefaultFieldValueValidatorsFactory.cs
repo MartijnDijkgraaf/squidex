@@ -63,7 +63,7 @@ namespace Squidex.Domain.Apps.Core.ValidateContent
 
             if (!properties.AllowDuplicates)
             {
-                yield return new UniqueValuesValidator<Guid>();
+                yield return new UniqueValuesValidator<string>();
             }
         }
 
@@ -143,7 +143,7 @@ namespace Squidex.Domain.Apps.Core.ValidateContent
 
             if (!properties.AllowDuplicates)
             {
-                yield return new UniqueValuesValidator<Guid>();
+                yield return new UniqueValuesValidator<string>();
             }
         }
 

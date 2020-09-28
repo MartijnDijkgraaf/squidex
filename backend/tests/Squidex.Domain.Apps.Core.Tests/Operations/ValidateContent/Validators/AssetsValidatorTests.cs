@@ -5,7 +5,6 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,6 +14,7 @@ using Squidex.Domain.Apps.Core.Schemas;
 using Squidex.Domain.Apps.Core.TestHelpers;
 using Squidex.Domain.Apps.Core.ValidateContent;
 using Squidex.Domain.Apps.Core.ValidateContent.Validators;
+using Squidex.Infrastructure;
 using Squidex.Infrastructure.Collections;
 using Xunit;
 
@@ -26,7 +26,7 @@ namespace Squidex.Domain.Apps.Core.Operations.ValidateContent.Validators
 
         public sealed class AssetInfo : IAssetInfo
         {
-            public Guid AssetId { get; set; }
+            public DomainId AssetId { get; set; }
 
             public string FileName { get; set; }
 
@@ -49,7 +49,7 @@ namespace Squidex.Domain.Apps.Core.Operations.ValidateContent.Validators
 
         private readonly AssetInfo document = new AssetInfo
         {
-            AssetId = Guid.NewGuid(),
+            AssetId = DomainId.NewGuid(),
             FileName = "MyDocument.pdf",
             FileSize = 1024 * 4,
             Type = AssetType.Unknown
@@ -57,7 +57,7 @@ namespace Squidex.Domain.Apps.Core.Operations.ValidateContent.Validators
 
         private readonly AssetInfo image1 = new AssetInfo
         {
-            AssetId = Guid.NewGuid(),
+            AssetId = DomainId.NewGuid(),
             FileName = "MyImage.png",
             FileSize = 1024 * 8,
             Type = AssetType.Image,
@@ -69,7 +69,7 @@ namespace Squidex.Domain.Apps.Core.Operations.ValidateContent.Validators
 
         private readonly AssetInfo image2 = new AssetInfo
         {
-            AssetId = Guid.NewGuid(),
+            AssetId = DomainId.NewGuid(),
             FileName = "MyImage.png",
             FileSize = 1024 * 8,
             Type = AssetType.Image,
@@ -92,7 +92,7 @@ namespace Squidex.Domain.Apps.Core.Operations.ValidateContent.Validators
         [Fact]
         public async Task Should_add_error_if_asset_are_not_valid()
         {
-            var assetId = Guid.NewGuid();
+            var assetId = DomainId.NewGuid();
 
             var sut = Validator(new AssetsFieldProperties());
 
@@ -105,7 +105,7 @@ namespace Squidex.Domain.Apps.Core.Operations.ValidateContent.Validators
         [Fact]
         public async Task Should_not_add_error_if_asset_are_not_valid_but_in_optimized_mode()
         {
-            var assetId = Guid.NewGuid();
+            var assetId = DomainId.NewGuid();
 
             var sut = Validator(new AssetsFieldProperties());
 
@@ -217,17 +217,17 @@ namespace Squidex.Domain.Apps.Core.Operations.ValidateContent.Validators
                 });
         }
 
-        private static object CreateValue(params Guid[] ids)
+        private static object CreateValue(params DomainId[] ids)
         {
             return ids.ToList();
         }
 
         private IValidator Validator(AssetsFieldProperties properties)
         {
-            return new AssetsValidator(properties, new CheckAssets(ids =>
+            return new AssetsValidator(properties, ids =>
             {
                 return Task.FromResult<IReadOnlyList<IAssetInfo>>(new List<IAssetInfo> { document, image1, image2 });
-            }));
+            });
         }
     }
 }

@@ -6,9 +6,9 @@
 // ==========================================================================
 
 using System;
-using System.ComponentModel.DataAnnotations;
 using Squidex.Domain.Apps.Entities.Comments.Commands;
 using Squidex.Infrastructure.Reflection;
+using Squidex.Infrastructure.Validation;
 
 namespace Squidex.Areas.Api.Controllers.Comments.Models
 {
@@ -17,7 +17,7 @@ namespace Squidex.Areas.Api.Controllers.Comments.Models
         /// <summary>
         /// The comment text.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string Text { get; set; }
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace Squidex.Areas.Api.Controllers.Comments.Models
             return SimpleMapper.Map(this, new CreateComment { CommentsId = commentsId });
         }
 
-        public UpdateComment ToUpdateComment(string commentsId, Guid commentId)
+        public UpdateComment ToUpdateComment(string commentsId, string commentId)
         {
             return SimpleMapper.Map(this, new UpdateComment { CommentsId = commentsId, CommentId = commentId });
         }

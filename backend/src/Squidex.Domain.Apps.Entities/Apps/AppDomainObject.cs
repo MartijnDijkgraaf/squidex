@@ -21,7 +21,6 @@ using Squidex.Infrastructure.EventSourcing;
 using Squidex.Infrastructure.Log;
 using Squidex.Infrastructure.Reflection;
 using Squidex.Infrastructure.States;
-using Squidex.Infrastructure.Translations;
 using Squidex.Shared.Users;
 
 namespace Squidex.Domain.Apps.Entities.Apps
@@ -35,7 +34,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
 
         public AppDomainObject(
             InitialPatterns initialPatterns,
-            IStore<Guid> store,
+            IStore<DomainId> store,
             ISemanticLog log,
             IAppPlansProvider appPlansProvider,
             IAppPlanBillingManager appPlansBillingManager,
@@ -53,10 +52,23 @@ namespace Squidex.Domain.Apps.Entities.Apps
             this.initialPatterns = initialPatterns;
         }
 
+        protected override bool IsDeleted()
+        {
+            return Snapshot.IsArchived;
+        }
+
+        protected override bool CanAcceptCreation(ICommand command)
+        {
+            return command is CreateApp;
+        }
+
+        protected override bool CanAccept(ICommand command)
+        {
+            return command is AppUpdateCommand update && Equals(update?.AppId?.Id, Snapshot.Id);
+        }
+
         public override Task<object?> ExecuteAsync(IAggregateCommand command)
         {
-            VerifyNotArchived();
-
             switch (command)
             {
                 case CreateApp createApp:
@@ -459,20 +471,9 @@ namespace Squidex.Domain.Apps.Entities.Apps
             RaiseEvent(SimpleMapper.Map(command, new AppArchived()));
         }
 
-        private void VerifyNotArchived()
-        {
-            if (Snapshot.IsArchived)
-            {
-                throw new DomainException(T.Get("apps.alreadyArchieved"));
-            }
-        }
-
         private void RaiseEvent(AppEvent @event)
         {
-            if (@event.AppId == null)
-            {
-                @event.AppId = NamedId.Of(Snapshot.Id, Snapshot.Name);
-            }
+            @event.AppId ??= Snapshot.NamedId();
 
             RaiseEvent(Envelope.Create(@event));
         }
@@ -482,7 +483,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
             return new AppCreated { Name = name };
         }
 
-        private static AppPatternAdded CreateInitialPattern(Guid id, AppPattern pattern)
+        private static AppPatternAdded CreateInitialPattern(DomainId id, AppPattern pattern)
         {
             return new AppPatternAdded { PatternId = id, Name = pattern.Name, Pattern = pattern.Pattern, Message = pattern.Message };
         }

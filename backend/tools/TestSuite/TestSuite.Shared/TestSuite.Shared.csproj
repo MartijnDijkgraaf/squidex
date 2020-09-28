@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    
+    <RootNamespace>TestSuite</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Fody" Version="6.1.1">
@@ -9,13 +11,12 @@
     </PackageReference>
     <PackageReference Include="Lazy.Fody" Version="1.8.0" PrivateAssets="all" />
     <PackageReference Include="RefactoringEssentials" Version="5.6.0" PrivateAssets="all" />
-    <PackageReference Include="Squidex.ClientLibrary" Version="5.3.0" />
+    <PackageReference Include="Squidex.ClientLibrary" Version="6.0.0-beta1" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" PrivateAssets="all" />
     <PackageReference Include="xunit" Version="2.4.1" />
   </ItemGroup>
   <PropertyGroup>
     <CodeAnalysisRuleSet>..\..\..\Squidex.ruleset</CodeAnalysisRuleSet>
-    <RootNamespace>TestSuite</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <AdditionalFiles Include="..\..\..\stylecop.json" Link="stylecop.json" />

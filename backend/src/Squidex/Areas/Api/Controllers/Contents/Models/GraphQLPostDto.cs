@@ -5,7 +5,7 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using GraphQL;
+using GraphQL.NewtonsoftJson;
 using Newtonsoft.Json.Linq;
 using Squidex.Domain.Apps.Entities.Contents.GraphQL;
 using Squidex.Infrastructure.Reflection;

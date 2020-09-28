@@ -63,7 +63,7 @@ namespace Squidex.Infrastructure.EventSourcing
             }
         }
 
-        public static IEnumerable<StoredEvent> Filtered(this MongoEventCommit commit, StreamPosition lastPosition, EventPredicate predicate)
+        public static IEnumerable<StoredEvent> Filtered(this MongoEventCommit commit, StreamPosition lastPosition)
         {
             var eventStreamOffset = commit.EventStreamOffset;
 
@@ -74,7 +74,7 @@ namespace Squidex.Infrastructure.EventSourcing
             {
                 eventStreamOffset++;
 
-                if ((commitOffset > lastPosition.CommitOffset || commitTimestamp > lastPosition.Timestamp) && predicate(@event))
+                if (commitOffset > lastPosition.CommitOffset || commitTimestamp > lastPosition.Timestamp)
                 {
                     var eventData = @event.ToEventData();
                     var eventPosition = new StreamPosition(commitTimestamp, commitOffset, commit.Events.Length);

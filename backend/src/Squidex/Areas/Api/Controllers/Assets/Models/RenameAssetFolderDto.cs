@@ -5,10 +5,9 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
-using System.ComponentModel.DataAnnotations;
 using Squidex.Domain.Apps.Entities.Assets.Commands;
 using Squidex.Infrastructure.Reflection;
+using Squidex.Infrastructure.Validation;
 
 namespace Squidex.Areas.Api.Controllers.Assets.Models
 {
@@ -17,10 +16,10 @@ namespace Squidex.Areas.Api.Controllers.Assets.Models
         /// <summary>
         /// The name of the folder.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string FolderName { get; set; }
 
-        public RenameAssetFolder ToCommand(Guid id)
+        public RenameAssetFolder ToCommand(string id)
         {
             return SimpleMapper.Map(this, new RenameAssetFolder { AssetFolderId = id });
         }

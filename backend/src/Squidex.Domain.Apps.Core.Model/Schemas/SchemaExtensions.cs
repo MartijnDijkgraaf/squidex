@@ -60,9 +60,9 @@ namespace Squidex.Domain.Apps.Core.Schemas
             return schema.Properties.Label.Or(schema.Name);
         }
 
-        public static Guid SingleId(this ReferencesFieldProperties properties)
+        public static DomainId SingleId(this ReferencesFieldProperties properties)
         {
-            return properties.SchemaIds?.Count == 1 ? properties.SchemaIds[0] : Guid.Empty;
+            return properties.SchemaIds?.Count == 1 ? properties.SchemaIds[0] : default;
         }
 
         public static IEnumerable<RootField> ReferenceFields(this Schema schema)

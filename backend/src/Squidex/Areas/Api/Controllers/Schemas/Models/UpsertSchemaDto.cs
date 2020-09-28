@@ -27,17 +27,17 @@ namespace Squidex.Areas.Api.Controllers.Schemas.Models
         /// <summary>
         /// The names of the fields that should be used in references.
         /// </summary>
-        public List<string>? FieldsInReferences { get; set; }
+        public string[]? FieldsInReferences { get; set; }
 
         /// <summary>
         /// The names of the fields that should be shown in lists, including meta fields.
         /// </summary>
-        public List<string>? FieldsInLists { get; set; }
+        public string[]? FieldsInLists { get; set; }
 
         /// <summary>
         /// Optional fields.
         /// </summary>
-        public List<UpsertSchemaFieldDto?>? Fields { get; set; }
+        public UpsertSchemaFieldDto[]? Fields { get; set; }
 
         /// <summary>
         /// The optional preview urls.
@@ -54,7 +54,8 @@ namespace Squidex.Areas.Api.Controllers.Schemas.Models
         /// </summary>
         public bool IsPublished { get; set; }
 
-        public static TCommand ToCommand<TCommand, TDto>(TDto dto, TCommand command) where TCommand : UpsertCommand where TDto : UpsertSchemaDto
+        public static TCommand ToCommand<TCommand, TDto>(TDto dto, TCommand command)
+            where TCommand : SchemaCommand, IUpsertCommand where TDto : UpsertSchemaDto
         {
             SimpleMapper.Map(dto, command);
 
@@ -82,9 +83,9 @@ namespace Squidex.Areas.Api.Controllers.Schemas.Models
                 command.FieldsInReferences = new FieldNames(dto.FieldsInReferences);
             }
 
-            if (dto.Fields != null)
+            if (dto.Fields?.Length > 0)
             {
-                command.Fields = new List<UpsertSchemaField>();
+                var fields = new List<UpsertSchemaField>();
 
                 foreach (var rootFieldDto in dto.Fields)
                 {
@@ -95,9 +96,9 @@ namespace Squidex.Areas.Api.Controllers.Schemas.Models
                     {
                         SimpleMapper.Map(rootFieldDto, rootField);
 
-                        if (rootFieldDto?.Nested?.Count > 0)
+                        if (rootFieldDto?.Nested?.Length > 0)
                         {
-                            rootField.Nested = new List<UpsertSchemaNestedField>();
+                            var nestedFields = new List<UpsertSchemaNestedField>();
 
                             foreach (var nestedFieldDto in rootFieldDto.Nested)
                             {
@@ -109,13 +110,17 @@ namespace Squidex.Areas.Api.Controllers.Schemas.Models
                                     SimpleMapper.Map(nestedFieldDto, nestedField);
                                 }
 
-                                rootField.Nested.Add(nestedField);
+                                nestedFields.Add(nestedField);
                             }
+
+                            rootField.Nested = nestedFields.ToArray();
                         }
                     }
 
-                    command.Fields.Add(rootField);
+                    fields.Add(rootField);
                 }
+
+                command.Fields = fields.ToArray();
             }
 
             return command;

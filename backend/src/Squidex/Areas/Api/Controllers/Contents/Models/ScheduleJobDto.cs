@@ -5,11 +5,10 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
-using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using Squidex.Domain.Apps.Core.Contents;
 using Squidex.Infrastructure;
+using Squidex.Infrastructure.Validation;
 
 namespace Squidex.Areas.Api.Controllers.Contents.Models
 {
@@ -18,7 +17,7 @@ namespace Squidex.Areas.Api.Controllers.Contents.Models
         /// <summary>
         /// The id of the schedule job.
         /// </summary>
-        public Guid Id { get; set; }
+        public DomainId Id { get; set; }
 
         /// <summary>
         /// The new status.
@@ -38,7 +37,7 @@ namespace Squidex.Areas.Api.Controllers.Contents.Models
         /// <summary>
         /// The user who schedule the content.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public RefToken ScheduledBy { get; set; }
     }
 }

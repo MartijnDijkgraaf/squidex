@@ -125,6 +125,7 @@ namespace Squidex.Areas.Api.Controllers.Contents.Generator
 
                 operation.AddBody("data", dataSchema, NSwagHelper.SchemaBodyDocs);
                 operation.AddQuery("publish", JsonObjectType.Boolean, "True to automatically publish the content.");
+                operation.AddQuery("id", JsonObjectType.String, "The optional custom content id.");
 
                 operation.AddResponse("201", $"{schemaName} content created.", contentSchema);
                 operation.AddResponse("400", $"{schemaName} content not valid.");
@@ -215,7 +216,7 @@ namespace Squidex.Areas.Api.Controllers.Contents.Generator
 
             if (path.StartsWith("/{id}", StringComparison.OrdinalIgnoreCase))
             {
-                operation.AddPathParameter("id", JsonObjectType.String, $"The id of the {schemaName} content.", JsonFormatStrings.Guid);
+                operation.AddPathParameter("id", JsonObjectType.String, $"The id of the {schemaName} content.");
 
                 operation.AddResponse("404", $"App, schema or {schemaName} content not found.");
             }

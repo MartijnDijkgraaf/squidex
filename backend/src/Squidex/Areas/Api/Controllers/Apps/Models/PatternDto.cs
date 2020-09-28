@@ -5,10 +5,10 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
-using System.ComponentModel.DataAnnotations;
 using Squidex.Domain.Apps.Core.Apps;
+using Squidex.Infrastructure;
 using Squidex.Infrastructure.Reflection;
+using Squidex.Infrastructure.Validation;
 using Squidex.Web;
 
 namespace Squidex.Areas.Api.Controllers.Apps.Models
@@ -18,18 +18,18 @@ namespace Squidex.Areas.Api.Controllers.Apps.Models
         /// <summary>
         /// Unique id of the pattern.
         /// </summary>
-        public Guid Id { get; set; }
+        public DomainId Id { get; set; }
 
         /// <summary>
         /// The name of the suggestion.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string Name { get; set; }
 
         /// <summary>
         /// The regex pattern.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string Pattern { get; set; }
 
         /// <summary>
@@ -37,7 +37,7 @@ namespace Squidex.Areas.Api.Controllers.Apps.Models
         /// </summary>
         public string? Message { get; set; }
 
-        public static PatternDto FromPattern(Guid id, AppPattern pattern, Resources resources)
+        public static PatternDto FromPattern(DomainId id, AppPattern pattern, Resources resources)
         {
             var result = SimpleMapper.Map(pattern, new PatternDto { Id = id });
 

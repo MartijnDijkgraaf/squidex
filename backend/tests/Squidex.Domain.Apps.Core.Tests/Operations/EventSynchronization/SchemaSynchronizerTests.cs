@@ -560,9 +560,6 @@ namespace Squidex.Domain.Apps.Core.Operations.EventSynchronization
         [Fact]
         public void Should_create_events_if_nested_fields_reordered()
         {
-            var id1 = NamedId.Of(1, "f1");
-            var id2 = NamedId.Of(2, "f1");
-
             var sourceSchema =
                 new Schema("source")
                     .AddArray(arrayId.Id, arrayId.Name, Partitioning.Invariant, f => f
@@ -578,7 +575,7 @@ namespace Squidex.Domain.Apps.Core.Operations.EventSynchronization
             var events = sourceSchema.Synchronize(targetSchema, idGenerator);
 
             events.ShouldHaveSameEvents(
-                new SchemaFieldsReordered { FieldIds = new List<long> { 11, 10 }, ParentFieldId = arrayId }
+                new SchemaFieldsReordered { FieldIds = new[] { 11L, 10L }, ParentFieldId = arrayId }
             );
         }
 
@@ -598,7 +595,7 @@ namespace Squidex.Domain.Apps.Core.Operations.EventSynchronization
             var events = sourceSchema.Synchronize(targetSchema, idGenerator);
 
             events.ShouldHaveSameEvents(
-                new SchemaFieldsReordered { FieldIds = new List<long> { 11, 10 } }
+                new SchemaFieldsReordered { FieldIds = new[] { 11L, 10L } }
             );
         }
 
@@ -620,7 +617,7 @@ namespace Squidex.Domain.Apps.Core.Operations.EventSynchronization
             events.ShouldHaveSameEvents(
                 new FieldDeleted { FieldId = NamedId.Of(11L, "f2") },
                 new FieldAdded { FieldId = NamedId.Of(50L, "f3"), Name = "f3", Partitioning = Partitioning.Invariant.Key, Properties = new StringFieldProperties() },
-                new SchemaFieldsReordered { FieldIds = new List<long> { 50, 10 } }
+                new SchemaFieldsReordered { FieldIds = new[] { 50L, 10L } }
             );
         }
 
@@ -642,7 +639,7 @@ namespace Squidex.Domain.Apps.Core.Operations.EventSynchronization
 
             events.ShouldHaveSameEvents(
                 new FieldAdded { FieldId = NamedId.Of(50L, "f3"), Name = "f3", Partitioning = Partitioning.Invariant.Key, Properties = new StringFieldProperties() },
-                new SchemaFieldsReordered { FieldIds = new List<long> { 10, 50, 11 } }
+                new SchemaFieldsReordered { FieldIds = new[] { 10L, 50L, 11L } }
             );
         }
 
@@ -664,7 +661,7 @@ namespace Squidex.Domain.Apps.Core.Operations.EventSynchronization
             events.ShouldHaveSameEvents(
                 new FieldDeleted { FieldId = NamedId.Of(10L, "f1") },
                 new FieldAdded { FieldId = NamedId.Of(50L, "f3"), Name = "f3", Partitioning = Partitioning.Invariant.Key, Properties = new StringFieldProperties() },
-                new SchemaFieldsReordered { FieldIds = new List<long> { 50, 11 } }
+                new SchemaFieldsReordered { FieldIds = new[] { 50L, 11L } }
             );
         }
     }

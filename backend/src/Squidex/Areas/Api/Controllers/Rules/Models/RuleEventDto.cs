@@ -5,12 +5,12 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
-using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using Squidex.Domain.Apps.Core.HandleRules;
 using Squidex.Domain.Apps.Entities.Rules;
+using Squidex.Infrastructure;
 using Squidex.Infrastructure.Reflection;
+using Squidex.Infrastructure.Validation;
 using Squidex.Web;
 
 namespace Squidex.Areas.Api.Controllers.Rules.Models
@@ -20,7 +20,7 @@ namespace Squidex.Areas.Api.Controllers.Rules.Models
         /// <summary>
         /// The id of the event.
         /// </summary>
-        public Guid Id { get; set; }
+        public DomainId Id { get; set; }
 
         /// <summary>
         /// The time when the event has been created.
@@ -30,13 +30,13 @@ namespace Squidex.Areas.Api.Controllers.Rules.Models
         /// <summary>
         /// The description.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string Description { get; set; }
 
         /// <summary>
         /// The name of the event.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string EventName { get; set; }
 
         /// <summary>

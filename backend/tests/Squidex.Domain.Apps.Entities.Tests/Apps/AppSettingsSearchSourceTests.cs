@@ -5,7 +5,6 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using FakeItEasy;
@@ -23,7 +22,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
     public sealed class AppSettingsSearchSourceTests
     {
         private readonly IUrlGenerator urlGenerator = A.Fake<IUrlGenerator>();
-        private readonly NamedId<Guid> appId = NamedId.Of(Guid.NewGuid(), "my-app");
+        private readonly NamedId<DomainId> appId = NamedId.Of(DomainId.NewGuid(), "my-app");
         private readonly AppSettingsSearchSource sut;
 
         public AppSettingsSearchSourceTests()
@@ -32,7 +31,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
         }
 
         [Fact]
-        public async Task Should_empty_if_nothing_matching()
+        public async Task Should_return_empty_if_nothing_matching()
         {
             var ctx = ContextWithPermission();
 
@@ -42,24 +41,11 @@ namespace Squidex.Domain.Apps.Entities.Apps
         }
 
         [Fact]
-        public async Task Should_always_return_contents_result_if_matching()
+        public async Task Should_return_dashboard_result_if_matching_and_permission_given()
         {
-            var ctx = ContextWithPermission();
+            var permission = Permissions.ForApp(Permissions.AppUsage, appId.Name);
 
-            A.CallTo(() => urlGenerator.ContentsUI(appId))
-                .Returns("contents-url");
-
-            var result = await sut.SearchAsync("content", ctx);
-
-            result.Should().BeEquivalentTo(
-                new SearchResults()
-                    .Add("Contents", SearchResultType.Content, "contents-url"));
-        }
-
-        [Fact]
-        public async Task Should_always_return_dashboard_result_if_matching()
-        {
-            var ctx = ContextWithPermission();
+            var ctx = ContextWithPermission(permission.Id);
 
             A.CallTo(() => urlGenerator.DashboardUI(appId))
                 .Returns("dashboard-url");
@@ -72,9 +58,21 @@ namespace Squidex.Domain.Apps.Entities.Apps
         }
 
         [Fact]
-        public async Task Should_always_return_languages_result_if_matching()
+        public async Task Should_not_return_dashboard_result_if_user_has_no_permission()
         {
-            var ctx = ContextWithPermission(null);
+            var ctx = ContextWithPermission();
+
+            var result = await sut.SearchAsync("assets", ctx);
+
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task Should_return_languages_result_if_matching_and_permission_given()
+        {
+            var permission = Permissions.ForApp(Permissions.AppLanguagesRead, appId.Name);
+
+            var ctx = ContextWithPermission(permission.Id);
 
             A.CallTo(() => urlGenerator.LanguagesUI(appId))
                 .Returns("languages-url");
@@ -87,9 +85,21 @@ namespace Squidex.Domain.Apps.Entities.Apps
         }
 
         [Fact]
-        public async Task Should_always_return_patterns_result_if_matching()
+        public async Task Should_not_return_languages_result_if_user_has_no_permission()
         {
             var ctx = ContextWithPermission();
+
+            var result = await sut.SearchAsync("assets", ctx);
+
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task Should_return_patterns_result_if_matching_and_permission_given()
+        {
+            var permission = Permissions.ForApp(Permissions.AppPatternsRead, appId.Name);
+
+            var ctx = ContextWithPermission(permission.Id);
 
             A.CallTo(() => urlGenerator.PatternsUI(appId))
                 .Returns("patterns-url");
@@ -102,9 +112,21 @@ namespace Squidex.Domain.Apps.Entities.Apps
         }
 
         [Fact]
-        public async Task Should_always_return_schemas_result_if_matching()
+        public async Task Should_not_return_patterns_result_if_user_has_no_permission()
         {
             var ctx = ContextWithPermission();
+
+            var result = await sut.SearchAsync("patterns", ctx);
+
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task Should_return_schemas_result_if_matching_and_permission_given()
+        {
+            var permission = Permissions.ForApp(Permissions.AppSchemasRead, appId.Name);
+
+            var ctx = ContextWithPermission(permission.Id);
 
             A.CallTo(() => urlGenerator.SchemasUI(appId))
                 .Returns("schemas-url");
@@ -114,6 +136,16 @@ namespace Squidex.Domain.Apps.Entities.Apps
             result.Should().BeEquivalentTo(
                 new SearchResults()
                     .Add("Schemas", SearchResultType.Schema, "schemas-url"));
+        }
+
+        [Fact]
+        public async Task Should_not_return_schemas_result_if_user_has_no_permission()
+        {
+            var ctx = ContextWithPermission();
+
+            var result = await sut.SearchAsync("schemas", ctx);
+
+            Assert.Empty(result);
         }
 
         [Fact]
@@ -323,7 +355,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
         }
 
         [Fact]
-        public async Task Should_not_workflows_clients_result_if_user_has_no_permission()
+        public async Task Should_not_return_workflows_result_if_user_has_no_permission()
         {
             var ctx = ContextWithPermission();
 
@@ -337,12 +369,10 @@ namespace Squidex.Domain.Apps.Entities.Apps
             var claimsIdentity = new ClaimsIdentity();
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
-            if (permission == null)
+            if (permission != null)
             {
-                permission = Permissions.ForApp(Permissions.AppCommon, appId.Name).Id;
+                claimsIdentity.AddClaim(new Claim(SquidexClaimTypes.Permissions, permission));
             }
-
-            claimsIdentity.AddClaim(new Claim(SquidexClaimTypes.Permissions, permission));
 
             return new Context(claimsPrincipal, Mocks.App(appId));
         }

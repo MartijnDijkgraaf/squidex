@@ -6,7 +6,6 @@
 // ==========================================================================
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using FakeItEasy;
@@ -22,12 +21,11 @@ namespace Squidex.Domain.Apps.Entities.Contents
 {
     public class BulkUpdateCommandMiddlewareTests
     {
-        private readonly IServiceProvider serviceProvider = A.Fake<IServiceProvider>();
         private readonly IContentQueryService contentQuery = A.Fake<IContentQueryService>();
         private readonly IContextProvider contextProvider = A.Fake<IContextProvider>();
         private readonly ICommandBus commandBus = A.Dummy<ICommandBus>();
         private readonly Context requestContext = Context.Anonymous();
-        private readonly NamedId<Guid> schemaId = NamedId.Of(Guid.NewGuid(), "my-schema");
+        private readonly NamedId<DomainId> schemaId = NamedId.Of(DomainId.NewGuid(), "my-schema");
         private readonly BulkUpdateCommandMiddleware sut;
 
         public BulkUpdateCommandMiddlewareTests()
@@ -35,7 +33,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
             A.CallTo(() => contextProvider.Context)
                 .Returns(requestContext);
 
-            sut = new BulkUpdateCommandMiddleware(serviceProvider, contentQuery, contextProvider);
+            sut = new BulkUpdateCommandMiddleware(contentQuery, contextProvider);
         }
 
         [Fact]
@@ -48,39 +46,28 @@ namespace Squidex.Domain.Apps.Entities.Contents
             await sut.HandleAsync(context);
 
             Assert.True(context.PlainResult is BulkUpdateResult);
-
-            A.CallTo(() => serviceProvider.GetService(A<Type>._))
-                .MustNotHaveHappened();
         }
 
         [Fact]
         public async Task Should_do_nothing_if_jobs_is_empty()
         {
-            var command = new BulkUpdateContents { Jobs = new List<BulkUpdateJob>() };
+            var command = new BulkUpdateContents { Jobs = Array.Empty<BulkUpdateJob>() };
 
             var context = new CommandContext(command, commandBus);
 
             await sut.HandleAsync(context);
 
             Assert.True(context.PlainResult is BulkUpdateResult);
-
-            A.CallTo(() => serviceProvider.GetService(A<Type>._))
-                .MustNotHaveHappened();
         }
 
         [Fact]
-        public async Task Should_import_contents_when_no_query_defined()
+        public async Task Should_upsert_content_with_random_id_if_no_query_and_id_defined()
         {
             var (_, data, _) = CreateTestData(false);
 
-            var domainObject = A.Fake<ContentDomainObject>();
-
-            A.CallTo(() => serviceProvider.GetService(typeof(ContentDomainObject)))
-                .Returns(domainObject);
-
             var command = new BulkUpdateContents
             {
-                Jobs = new List<BulkUpdateJob>
+                Jobs = new[]
                 {
                     new BulkUpdateJob
                     {
@@ -100,26 +87,19 @@ namespace Squidex.Domain.Apps.Entities.Contents
             Assert.Single(result);
             Assert.Equal(1, result.Count(x => x.ContentId != default && x.Exception == null));
 
-            A.CallTo(() => domainObject.ExecuteAsync(A<CreateContent>.That.Matches(x => x.Data == data)))
-                .MustHaveHappenedOnceExactly();
-
-            A.CallTo(() => domainObject.Setup(A<Guid>._))
+            A.CallTo(() => commandBus.PublishAsync(
+                    A<UpsertContent>.That.Matches(x => x.Data == data && x.ContentId.ToString().Length == 36)))
                 .MustHaveHappenedOnceExactly();
         }
 
         [Fact]
-        public async Task Should_import_contents_when_query_returns_no_result()
+        public async Task Should_upsert_content_with_random_id_if_query_returns_no_result()
         {
             var (_, data, query) = CreateTestData(false);
 
-            var domainObject = A.Fake<ContentDomainObject>();
-
-            A.CallTo(() => serviceProvider.GetService(typeof(ContentDomainObject)))
-                .Returns(domainObject);
-
             var command = new BulkUpdateContents
             {
-                Jobs = new List<BulkUpdateJob>
+                Jobs = new[]
                 {
                     new BulkUpdateJob
                     {
@@ -140,21 +120,19 @@ namespace Squidex.Domain.Apps.Entities.Contents
             Assert.Single(result);
             Assert.Equal(1, result.Count(x => x.ContentId != default && x.Exception == null));
 
-            A.CallTo(() => domainObject.ExecuteAsync(A<CreateContent>.That.Matches(x => x.Data == data)))
-                .MustHaveHappenedOnceExactly();
-
-            A.CallTo(() => domainObject.Setup(A<Guid>._))
+            A.CallTo(() => commandBus.PublishAsync(
+                    A<UpsertContent>.That.Matches(x => x.Data == data && x.ContentId.ToString().Length == 36)))
                 .MustHaveHappenedOnceExactly();
         }
 
         [Fact]
-        public async Task Should_update_content_when_id_defined()
+        public async Task Should_upsert_content_when_id_defined()
         {
             var (id, data, _) = CreateTestData(false);
 
             var command = new BulkUpdateContents
             {
-                Jobs = new List<BulkUpdateJob>
+                Jobs = new[]
                 {
                     new BulkUpdateJob
                     {
@@ -175,12 +153,13 @@ namespace Squidex.Domain.Apps.Entities.Contents
             Assert.Single(result);
             Assert.Equal(1, result.Count(x => x.ContentId != default && x.Exception == null));
 
-            A.CallTo(() => commandBus.PublishAsync(A<UpdateContent>.That.Matches(x => x.ContentId == id && x.Data == data)))
+            A.CallTo(() => commandBus.PublishAsync(
+                    A<UpsertContent>.That.Matches(x => x.Data == data && x.ContentId == id)))
                 .MustHaveHappenedOnceExactly();
         }
 
         [Fact]
-        public async Task Should_update_content_when_query_defined()
+        public async Task Should_upsert_content_with_custom_id()
         {
             var (id, data, query) = CreateTestData(true);
 
@@ -189,7 +168,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
             var command = new BulkUpdateContents
             {
-                Jobs = new List<BulkUpdateJob>
+                Jobs = new[]
                 {
                     new BulkUpdateJob
                     {
@@ -210,7 +189,8 @@ namespace Squidex.Domain.Apps.Entities.Contents
             Assert.Single(result);
             Assert.Equal(1, result.Count(x => x.ContentId != default && x.Exception == null));
 
-            A.CallTo(() => commandBus.PublishAsync(A<UpdateContent>.That.Matches(x => x.ContentId == id && x.Data == data)))
+            A.CallTo(() => commandBus.PublishAsync(
+                    A<UpsertContent>.That.Matches(x => x.Data == data && x.ContentId == id)))
                 .MustHaveHappenedOnceExactly();
         }
 
@@ -224,7 +204,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
             var command = new BulkUpdateContents
             {
-                Jobs = new List<BulkUpdateJob>
+                Jobs = new[]
                 {
                     new BulkUpdateJob
                     {
@@ -256,7 +236,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
             var command = new BulkUpdateContents
             {
-                Jobs = new List<BulkUpdateJob>
+                Jobs = new[]
                 {
                     new BulkUpdateJob
                     {
@@ -287,7 +267,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
             var command = new BulkUpdateContents
             {
-                Jobs = new List<BulkUpdateJob>
+                Jobs = new[]
                 {
                     new BulkUpdateJob
                     {
@@ -318,7 +298,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
             var command = new BulkUpdateContents
             {
-                Jobs = new List<BulkUpdateJob>
+                Jobs = new[]
                 {
                     new BulkUpdateJob
                     {
@@ -338,7 +318,8 @@ namespace Squidex.Domain.Apps.Entities.Contents
             Assert.Single(result);
             Assert.Equal(1, result.Count(x => x.ContentId == id));
 
-            A.CallTo(() => commandBus.PublishAsync(A<DeleteContent>.That.Matches(x => x.ContentId == id)))
+            A.CallTo(() => commandBus.PublishAsync(
+                    A<DeleteContent>.That.Matches(x => x.ContentId == id)))
                 .MustHaveHappened();
         }
 
@@ -349,7 +330,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
             var command = new BulkUpdateContents
             {
-                Jobs = new List<BulkUpdateJob>
+                Jobs = new[]
                 {
                     new BulkUpdateJob
                     {
@@ -373,7 +354,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
                 .MustNotHaveHappened();
         }
 
-        private static (Guid Id, NamedContentData Data, Query<IJsonValue>? Query) CreateTestData(bool withQuery)
+        private static (DomainId Id, NamedContentData Data, Query<IJsonValue>? Query) CreateTestData(bool withQuery)
         {
             Query<IJsonValue>? query = withQuery ? new Query<IJsonValue>() : null;
 
@@ -383,10 +364,10 @@ namespace Squidex.Domain.Apps.Entities.Contents
                         new ContentFieldData()
                             .AddJsonValue("iv", JsonValue.Create(1)));
 
-            return (Guid.NewGuid(), data, query);
+            return (DomainId.NewGuid(), data, query);
         }
 
-        private static IEnrichedContentEntity CreateContent(Guid id)
+        private static IEnrichedContentEntity CreateContent(DomainId id)
         {
             return new ContentEntity { Id = id };
         }

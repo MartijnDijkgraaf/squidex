@@ -37,12 +37,12 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             this.replicatedCache = replicatedCache;
         }
 
-        public Task RebuildAsync(Guid appId, Dictionary<string, Guid> schemas)
+        public Task RebuildAsync(DomainId appId, Dictionary<string, DomainId> schemas)
         {
             return Index(appId).RebuildAsync(schemas);
         }
 
-        public async Task<List<ISchemaEntity>> GetSchemasAsync(Guid appId)
+        public async Task<List<ISchemaEntity>> GetSchemasAsync(DomainId appId)
         {
             using (Profiler.TraceMethod<SchemasIndex>())
             {
@@ -56,7 +56,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             }
         }
 
-        public async Task<ISchemaEntity?> GetSchemaByNameAsync(Guid appId, string name, bool canCache)
+        public async Task<ISchemaEntity?> GetSchemaByNameAsync(DomainId appId, string name, bool canCache)
         {
             using (Profiler.TraceMethod<SchemasIndex>())
             {
@@ -72,7 +72,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
 
                 var id = await GetSchemaIdAsync(appId, name);
 
-                if (id == default)
+                if (id == DomainId.Empty)
                 {
                     return null;
                 }
@@ -81,7 +81,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             }
         }
 
-        public async Task<ISchemaEntity?> GetSchemaAsync(Guid appId, Guid id, bool canCache)
+        public async Task<ISchemaEntity?> GetSchemaAsync(DomainId appId, DomainId id, bool canCache)
         {
             using (Profiler.TraceMethod<SchemasIndex>())
             {
@@ -95,7 +95,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
                     }
                 }
 
-                var schema = await GetSchemaCoreAsync(id);
+                var schema = await GetSchemaCoreAsync(DomainId.Combine(appId, id));
 
                 if (schema != null)
                 {
@@ -106,7 +106,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             }
         }
 
-        private async Task<Guid> GetSchemaIdAsync(Guid appId, string name)
+        private async Task<DomainId> GetSchemaIdAsync(DomainId appId, string name)
         {
             using (Profiler.TraceMethod<SchemasIndex>())
             {
@@ -114,7 +114,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             }
         }
 
-        private async Task<List<Guid>> GetSchemaIdsAsync(Guid appId)
+        private async Task<List<DomainId>> GetSchemaIdsAsync(DomainId appId)
         {
             using (Profiler.TraceMethod<SchemasIndex>())
             {
@@ -155,7 +155,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
 
                 if (context.IsCompleted && context.Command is SchemaCommand schemaCommand)
                 {
-                    var schema = await GetSchemaCoreAsync(schemaCommand.SchemaId);
+                    var schema = await GetSchemaCoreAsync(schemaCommand.AggregateId);
 
                     if (schema != null)
                     {
@@ -194,14 +194,14 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             return Index(schema.AppId.Id).RemoveAsync(schema.Id);
         }
 
-        private ISchemasByAppIndexGrain Index(Guid appId)
+        private ISchemasByAppIndexGrain Index(DomainId appId)
         {
-            return grainFactory.GetGrain<ISchemasByAppIndexGrain>(appId);
+            return grainFactory.GetGrain<ISchemasByAppIndexGrain>(appId.ToString());
         }
 
-        private async Task<ISchemaEntity?> GetSchemaCoreAsync(Guid schemaId)
+        private async Task<ISchemaEntity?> GetSchemaCoreAsync(DomainId id)
         {
-            var schema = (await grainFactory.GetGrain<ISchemaGrain>(schemaId).GetStateAsync()).Value;
+            var schema = (await grainFactory.GetGrain<ISchemaGrain>(id.ToString()).GetStateAsync()).Value;
 
             if (schema.Version <= EtagVersion.Empty)
             {
@@ -211,12 +211,12 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             return schema;
         }
 
-        private string GetCacheKey(Guid appId, string name)
+        private static string GetCacheKey(DomainId appId, string name)
         {
             return $"SCHEMAS_NAME_{appId}_{name}";
         }
 
-        private string GetCacheKey(Guid appId, Guid id)
+        private static string GetCacheKey(DomainId appId, DomainId id)
         {
             return $"SCHEMAS_ID_{appId}_{id}";
         }

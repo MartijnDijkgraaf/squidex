@@ -40,7 +40,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             this.replicatedCache = replicatedCache;
         }
 
-        public async Task RebuildByContributorsAsync(Guid appId, HashSet<string> contributors)
+        public async Task RebuildByContributorsAsync(DomainId appId, HashSet<string> contributors)
         {
             foreach (var contributorId in contributors)
             {
@@ -48,12 +48,12 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             }
         }
 
-        public Task RebuildByContributorsAsync(string contributorId, HashSet<Guid> apps)
+        public Task RebuildByContributorsAsync(string contributorId, HashSet<DomainId> apps)
         {
             return Index(contributorId).RebuildAsync(apps);
         }
 
-        public Task RebuildAsync(Dictionary<string, Guid> appsByName)
+        public Task RebuildAsync(Dictionary<string, DomainId> appsByName)
         {
             return Index().RebuildAsync(appsByName);
         }
@@ -63,7 +63,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             return Index().RemoveReservationAsync(token);
         }
 
-        public Task<List<Guid>> GetIdsAsync()
+        public Task<List<DomainId>> GetIdsAsync()
         {
             return Index().GetIdsAsync();
         }
@@ -73,7 +73,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             return Index().AddAsync(token);
         }
 
-        public Task<string?> ReserveAsync(Guid id, string name)
+        public Task<string?> ReserveAsync(DomainId id, string name)
         {
             return Index().ReserveAsync(id, name);
         }
@@ -124,7 +124,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
 
                 var appId = await GetAppIdAsync(name);
 
-                if (appId == default)
+                if (appId == DomainId.Empty)
                 {
                     return null;
                 }
@@ -133,7 +133,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             }
         }
 
-        public async Task<IAppEntity?> GetAppAsync(Guid appId, bool canCache)
+        public async Task<IAppEntity?> GetAppAsync(DomainId appId, bool canCache)
         {
             using (Profiler.TraceMethod<AppsIndex>())
             {
@@ -156,7 +156,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             }
         }
 
-        private async Task<List<Guid>> GetAppIdsByUserAsync(string userId)
+        private async Task<List<DomainId>> GetAppIdsByUserAsync(string userId)
         {
             using (Profiler.TraceMethod<AppProvider>())
             {
@@ -164,7 +164,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             }
         }
 
-        private async Task<List<Guid>> GetAppIdsAsync()
+        private async Task<List<DomainId>> GetAppIdsAsync()
         {
             using (Profiler.TraceMethod<AppProvider>())
             {
@@ -172,7 +172,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             }
         }
 
-        private async Task<List<Guid>> GetAppIdsAsync(string[] names)
+        private async Task<List<DomainId>> GetAppIdsAsync(string[] names)
         {
             using (Profiler.TraceMethod<AppProvider>())
             {
@@ -180,7 +180,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             }
         }
 
-        private async Task<Guid> GetAppIdAsync(string name)
+        private async Task<DomainId> GetAppIdAsync(string name)
         {
             using (Profiler.TraceMethod<AppProvider>())
             {
@@ -208,7 +208,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
                         {
                             await index.AddAsync(token);
 
-                            await Index(createApp.Actor.Identifier).AddAsync(createApp.AppId);
+                            await Index(createApp.Actor.Identifier).AddAsync(createApp.AppId.ToString());
                         }
                         else
                         {
@@ -223,7 +223,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
 
                 if (context.IsCompleted && context.Command is AppCommand appCommand)
                 {
-                    var app = await GetAppCoreAsync(appCommand.AppId);
+                    var app = await GetAppCoreAsync(appCommand.AggregateId);
 
                     if (app != null)
                     {
@@ -254,7 +254,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
 
             if (name.IsSlug())
             {
-                var token = await index.ReserveAsync(command.AppId, name);
+                var token = await index.ReserveAsync(command.AppId.ToString(), name);
 
                 if (token == null)
                 {
@@ -269,12 +269,12 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
 
         private async Task AssignContributorAsync(AssignContributor command)
         {
-            await Index(command.ContributorId).AddAsync(command.AppId);
+            await Index(command.ContributorId).AddAsync(command.AggregateId);
         }
 
         private async Task RemoveContributorAsync(RemoveContributor command)
         {
-            await Index(command.ContributorId).RemoveAsync(command.AppId);
+            await Index(command.ContributorId).RemoveAsync(command.AggregateId);
         }
 
         private async Task ArchiveAppAsync(IAppEntity app)
@@ -297,9 +297,9 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             return grainFactory.GetGrain<IAppsByUserIndexGrain>(id);
         }
 
-        private async Task<IAppEntity?> GetAppCoreAsync(Guid appId)
+        private async Task<IAppEntity?> GetAppCoreAsync(DomainId id)
         {
-            var app = (await grainFactory.GetGrain<IAppGrain>(appId).GetStateAsync()).Value;
+            var app = (await grainFactory.GetGrain<IAppGrain>(id.ToString()).GetStateAsync()).Value;
 
             if (app.Version <= EtagVersion.Empty)
             {
@@ -309,7 +309,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             return app;
         }
 
-        private static string GetCacheKey(Guid id)
+        private static string GetCacheKey(DomainId id)
         {
             return $"APPS_ID_{id}";
         }

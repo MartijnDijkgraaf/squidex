@@ -18,7 +18,14 @@ namespace Squidex.Infrastructure.MongoDb
         {
             try
             {
-                BsonSerializer.RegisterSerializer(new InstantSerializer());
+                try
+                {
+                    BsonSerializer.RegisterSerializer(new InstantSerializer());
+                }
+                catch (BsonSerializationException)
+                {
+                    return;
+                }
             }
             catch (BsonSerializationException)
             {

@@ -18,6 +18,7 @@ using Squidex.Domain.Apps.Entities.Apps;
 using Squidex.Domain.Apps.Entities.Contents.Commands;
 using Squidex.Domain.Apps.Entities.Schemas;
 using Squidex.Infrastructure;
+using Squidex.Infrastructure.Log;
 using Squidex.Infrastructure.Validation;
 
 #pragma warning disable IDE0016 // Use 'throw' expression
@@ -34,6 +35,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
         };
 
         private readonly IScriptEngine scriptEngine;
+        private readonly ISemanticLog log;
         private readonly IAppProvider appProvider;
         private readonly IEnumerable<IValidatorsFactory> factories;
         private ISchemaEntity schema;
@@ -41,11 +43,13 @@ namespace Squidex.Domain.Apps.Entities.Contents
         private ContentCommand command;
         private ValidationContext validationContext;
 
-        public ContentOperationContext(IAppProvider appProvider, IEnumerable<IValidatorsFactory> factories, IScriptEngine scriptEngine)
+        public ContentOperationContext(IAppProvider appProvider, IEnumerable<IValidatorsFactory> factories, IScriptEngine scriptEngine, ISemanticLog log)
         {
             this.appProvider = appProvider;
             this.factories = factories;
             this.scriptEngine = scriptEngine;
+
+            this.log = log;
         }
 
         public ISchemaEntity Schema
@@ -53,7 +57,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
             get { return schema; }
         }
 
-        public async Task LoadAsync(NamedId<Guid> appId, NamedId<Guid> schemaId, ContentCommand command, bool optimized)
+        public async Task LoadAsync(NamedId<DomainId> appId, NamedId<DomainId> schemaId, ContentCommand command, bool optimized)
         {
             this.command = command;
 
@@ -85,7 +89,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
         public async Task ValidateInputAsync(NamedContentData data)
         {
-            var validator = new ContentValidator(app.PartitionResolver(), validationContext, factories);
+            var validator = new ContentValidator(app.PartitionResolver(), validationContext, factories, log);
 
             await validator.ValidateInputAsync(data);
 
@@ -94,7 +98,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
         public async Task ValidateInputPartialAsync(NamedContentData data)
         {
-            var validator = new ContentValidator(app.PartitionResolver(), validationContext, factories);
+            var validator = new ContentValidator(app.PartitionResolver(), validationContext, factories, log);
 
             await validator.ValidateInputPartialAsync(data);
 
@@ -103,14 +107,14 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
         public async Task ValidateContentAsync(NamedContentData data)
         {
-            var validator = new ContentValidator(app.PartitionResolver(), validationContext, factories);
+            var validator = new ContentValidator(app.PartitionResolver(), validationContext, factories, log);
 
             await validator.ValidateContentAsync(data);
 
             CheckErrors(validator);
         }
 
-        private void CheckErrors(ContentValidator validator)
+        private static void CheckErrors(ContentValidator validator)
         {
             if (validator.Errors.Count > 0)
             {

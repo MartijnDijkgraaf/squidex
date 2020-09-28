@@ -26,12 +26,29 @@ namespace Squidex.Domain.Apps.Entities.Assets
     {
         private readonly IAssetQueryService assetQuery;
 
-        public AssetFolderDomainObject(IStore<Guid> store, IAssetQueryService assetQuery, ISemanticLog log)
+        public AssetFolderDomainObject(IStore<DomainId> store, IAssetQueryService assetQuery, ISemanticLog log)
             : base(store, log)
         {
             Guard.NotNull(assetQuery, nameof(assetQuery));
 
             this.assetQuery = assetQuery;
+        }
+
+        protected override bool IsDeleted()
+        {
+            return Snapshot.IsDeleted;
+        }
+
+        protected override bool CanAcceptCreation(ICommand command)
+        {
+            return command is AssetFolderCommand;
+        }
+
+        protected override bool CanAccept(ICommand command)
+        {
+            return command is AssetFolderCommand assetFolderCommand &&
+                Equals(assetFolderCommand.AppId, Snapshot.AppId) &&
+                Equals(assetFolderCommand.AssetFolderId, Snapshot.Id);
         }
 
         public override Task<object?> ExecuteAsync(IAggregateCommand command)
@@ -101,10 +118,7 @@ namespace Squidex.Domain.Apps.Entities.Assets
 
         private void RaiseEvent(AppEvent @event)
         {
-            if (@event.AppId == null)
-            {
-                @event.AppId = Snapshot.AppId;
-            }
+            @event.AppId ??= Snapshot.AppId;
 
             RaiseEvent(Envelope.Create(@event));
         }

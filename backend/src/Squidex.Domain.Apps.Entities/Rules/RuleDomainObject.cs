@@ -18,7 +18,6 @@ using Squidex.Infrastructure.EventSourcing;
 using Squidex.Infrastructure.Log;
 using Squidex.Infrastructure.Reflection;
 using Squidex.Infrastructure.States;
-using Squidex.Infrastructure.Translations;
 
 namespace Squidex.Domain.Apps.Entities.Rules
 {
@@ -27,7 +26,7 @@ namespace Squidex.Domain.Apps.Entities.Rules
         private readonly IAppProvider appProvider;
         private readonly IRuleEnqueuer ruleEnqueuer;
 
-        public RuleDomainObject(IStore<Guid> store, ISemanticLog log, IAppProvider appProvider, IRuleEnqueuer ruleEnqueuer)
+        public RuleDomainObject(IStore<DomainId> store, ISemanticLog log, IAppProvider appProvider, IRuleEnqueuer ruleEnqueuer)
             : base(store, log)
         {
             Guard.NotNull(appProvider, nameof(appProvider));
@@ -38,10 +37,25 @@ namespace Squidex.Domain.Apps.Entities.Rules
             this.ruleEnqueuer = ruleEnqueuer;
         }
 
+        protected override bool IsDeleted()
+        {
+            return Snapshot.IsDeleted;
+        }
+
+        protected override bool CanAcceptCreation(ICommand command)
+        {
+            return command is RuleCommand;
+        }
+
+        protected override bool CanAccept(ICommand command)
+        {
+            return command is RuleCommand ruleCommand &&
+                ruleCommand.AppId.Equals(Snapshot.AppId) &&
+                ruleCommand.RuleId.Equals(Snapshot.Id);
+        }
+
         public override Task<object?> ExecuteAsync(IAggregateCommand command)
         {
-            VerifyNotDeleted();
-
             switch (command)
             {
                 case CreateRule createRule:
@@ -132,20 +146,9 @@ namespace Squidex.Domain.Apps.Entities.Rules
 
         private void RaiseEvent(AppEvent @event)
         {
-            if (@event.AppId == null)
-            {
-                @event.AppId = Snapshot.AppId;
-            }
+            @event.AppId ??= Snapshot.AppId;
 
             RaiseEvent(Envelope.Create(@event));
-        }
-
-        private void VerifyNotDeleted()
-        {
-            if (Snapshot.IsDeleted)
-            {
-                throw new DomainException(T.Get("rules.alreadyDeleted"));
-            }
         }
     }
 }

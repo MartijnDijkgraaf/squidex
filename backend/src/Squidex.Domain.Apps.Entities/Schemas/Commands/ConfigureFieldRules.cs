@@ -5,19 +5,18 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System.Collections.Generic;
 using System.Linq;
 using Squidex.Domain.Apps.Core.Schemas;
 
 namespace Squidex.Domain.Apps.Entities.Schemas.Commands
 {
-    public sealed class ConfigureFieldRules : SchemaCommand
+    public sealed class ConfigureFieldRules : SchemaUpdateCommand
     {
-        public List<FieldRuleCommand>? FieldRules { get; set; }
+        public FieldRuleCommand[]? FieldRules { get; set; }
 
         public FieldRules ToFieldRules()
         {
-            if (FieldRules?.Count > 0)
+            if (FieldRules?.Length > 0)
             {
                 return new FieldRules(FieldRules.Select(x => x.ToFieldRule()).ToList());
             }

@@ -9,14 +9,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Squidex.Infrastructure;
-using Squidex.Infrastructure.EventSourcing;
 using Squidex.Infrastructure.UsageTracking;
 
 #pragma warning disable CS0649
 
 namespace Squidex.Domain.Apps.Entities.Assets
 {
-    public partial class AssetUsageTracker : IAssetUsageTracker, IEventConsumer
+    public partial class AssetUsageTracker : IAssetUsageTracker
     {
         private const string CounterTotalCount = "TotalAssets";
         private const string CounterTotalSize = "TotalSize";
@@ -30,7 +29,7 @@ namespace Squidex.Domain.Apps.Entities.Assets
             this.usageTracker = usageTracker;
         }
 
-        public async Task<long> GetTotalSizeAsync(Guid appId)
+        public async Task<long> GetTotalSizeAsync(DomainId appId)
         {
             var key = GetKey(appId);
 
@@ -39,7 +38,7 @@ namespace Squidex.Domain.Apps.Entities.Assets
             return counters.GetInt64(CounterTotalSize);
         }
 
-        public async Task<IReadOnlyList<AssetStats>> QueryAsync(Guid appId, DateTime fromDate, DateTime toDate)
+        public async Task<IReadOnlyList<AssetStats>> QueryAsync(DomainId appId, DateTime fromDate, DateTime toDate)
         {
             var enriched = new List<AssetStats>();
 

@@ -6,6 +6,7 @@
 // ==========================================================================
 
 using System;
+using System.Linq;
 using Squidex.Domain.Apps.Core;
 using Squidex.Domain.Apps.Core.Schemas;
 using Squidex.Domain.Apps.Events.Schemas;
@@ -20,11 +21,16 @@ namespace Squidex.Domain.Apps.Entities.Schemas.State
     [CollectionName("Schemas")]
     public sealed class SchemaState : DomainObjectState<SchemaState>, ISchemaEntity
     {
-        public NamedId<Guid> AppId { get; set; }
+        public NamedId<DomainId> AppId { get; set; }
 
         public Schema SchemaDef { get; set; }
 
         public long SchemaFieldsTotal { get; set; }
+
+        public DomainId UniqueId
+        {
+            get { return DomainId.Combine(AppId, Id); }
+        }
 
         public override bool ApplyEvent(IEvent @event)
         {
@@ -34,6 +40,8 @@ namespace Squidex.Domain.Apps.Entities.Schemas.State
             {
                 case SchemaCreated e:
                     {
+                        Id = e.SchemaId.Id;
+
                         SchemaDef = e.Schema;
                         SchemaFieldsTotal = e.Schema.MaxId();
 
@@ -131,7 +139,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.State
 
                 case SchemaFieldsReordered e:
                     {
-                        SchemaDef = SchemaDef.ReorderFields(e.FieldIds, e.ParentFieldId?.Id);
+                        SchemaDef = SchemaDef.ReorderFields(e.FieldIds.ToList(), e.ParentFieldId?.Id);
 
                         break;
                     }

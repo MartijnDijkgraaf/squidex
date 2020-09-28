@@ -6,7 +6,6 @@
 // ==========================================================================
 
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using FakeItEasy;
 using Squidex.Domain.Apps.Core.Apps;
@@ -18,6 +17,7 @@ using Squidex.Domain.Apps.Entities.TestHelpers;
 using Squidex.Domain.Apps.Events.Apps;
 using Squidex.Infrastructure;
 using Squidex.Infrastructure.Commands;
+using Squidex.Infrastructure.Json.Objects;
 using Squidex.Infrastructure.Log;
 using Squidex.Shared.Users;
 using Xunit;
@@ -30,20 +30,20 @@ namespace Squidex.Domain.Apps.Entities.Apps
         private readonly IAppPlanBillingManager appPlansBillingManager = A.Fake<IAppPlanBillingManager>();
         private readonly IUser user = A.Fake<IUser>();
         private readonly IUserResolver userResolver = A.Fake<IUserResolver>();
-        private readonly string contributorId = Guid.NewGuid().ToString();
+        private readonly string contributorId = DomainId.NewGuid().ToString();
         private readonly string clientId = "client";
         private readonly string clientNewName = "My Client";
         private readonly string roleName = "My Role";
         private readonly string planIdPaid = "premium";
         private readonly string planIdFree = "free";
         private readonly AppDomainObject sut;
-        private readonly Guid workflowId = Guid.NewGuid();
-        private readonly Guid patternId1 = Guid.NewGuid();
-        private readonly Guid patternId2 = Guid.NewGuid();
-        private readonly Guid patternId3 = Guid.NewGuid();
+        private readonly DomainId workflowId = DomainId.NewGuid();
+        private readonly DomainId patternId1 = DomainId.NewGuid();
+        private readonly DomainId patternId2 = DomainId.NewGuid();
+        private readonly DomainId patternId3 = DomainId.NewGuid();
         private readonly InitialPatterns initialPatterns;
 
-        protected override Guid Id
+        protected override DomainId Id
         {
             get { return AppId; }
         }
@@ -222,7 +222,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
                     CreateEvent(new AppPlanChanged { PlanId = planIdPaid })
                 );
 
-            A.CallTo(() => appPlansBillingManager.ChangePlanAsync(A<string>._, A<NamedId<Guid>>._, A<string?>._, A<string?>._))
+            A.CallTo(() => appPlansBillingManager.ChangePlanAsync(A<string>._, A<NamedId<DomainId>>._, A<string?>._, A<string?>._))
                 .MustNotHaveHappened();
         }
 
@@ -248,7 +248,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
                     CreateEvent(new AppPlanReset())
                 );
 
-            A.CallTo(() => appPlansBillingManager.ChangePlanAsync(A<string>._, A<NamedId<Guid>>._, planIdFree, A<string?>._))
+            A.CallTo(() => appPlansBillingManager.ChangePlanAsync(A<string>._, A<NamedId<DomainId>>._, planIdFree, A<string?>._))
                 .MustNotHaveHappened();
         }
 
@@ -529,7 +529,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
         [Fact]
         public async Task UpdateLanguage_should_create_events_and_update_language()
         {
-            var command = new UpdateLanguage { Language = Language.DE, Fallback = new List<Language> { Language.EN } };
+            var command = new UpdateLanguage { Language = Language.DE, Fallback = new[] { Language.EN } };
 
             await ExecuteCreateAsync();
             await ExecuteAddLanguageAsync(Language.DE);
@@ -542,7 +542,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
 
             LastEvents
                 .ShouldHaveSameEvents(
-                    CreateEvent(new AppLanguageUpdated { Language = Language.DE, Fallback = new List<Language> { Language.EN } })
+                    CreateEvent(new AppLanguageUpdated { Language = Language.DE, Fallback = new[] { Language.EN } })
                 );
         }
 
@@ -588,7 +588,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
         [Fact]
         public async Task UpdateRole_should_create_events_and_update_role()
         {
-            var command = new UpdateRole { Name = roleName, Permissions = new[] { "clients.read" } };
+            var command = new UpdateRole { Name = roleName, Permissions = new[] { "clients.read" }, Properties = JsonValue.Object() };
 
             await ExecuteCreateAsync();
             await ExecuteAddRoleAsync();
@@ -599,7 +599,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
 
             LastEvents
                 .ShouldHaveSameEvents(
-                    CreateEvent(new AppRoleUpdated { Name = roleName, Permissions = new[] { "clients.read" } })
+                    CreateEvent(new AppRoleUpdated { Name = roleName, Permissions = command.Permissions, Properties = command.Properties })
                 );
         }
 
@@ -684,7 +684,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
 
         private Task ExecuteCreateAsync()
         {
-            return PublishAsync(new CreateApp { Name = AppName });
+            return PublishAsync(new CreateApp { Name = AppName, AppId = AppId });
         }
 
         private Task ExecuteUploadImage()

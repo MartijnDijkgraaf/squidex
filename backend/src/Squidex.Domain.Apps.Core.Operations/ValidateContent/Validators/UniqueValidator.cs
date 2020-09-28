@@ -5,16 +5,16 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Squidex.Infrastructure;
 using Squidex.Infrastructure.Queries;
 using Squidex.Infrastructure.Translations;
 
 namespace Squidex.Domain.Apps.Core.ValidateContent.Validators
 {
-    public delegate Task<IReadOnlyList<(Guid SchemaId, Guid Id)>> CheckUniqueness(FilterNode<ClrValue> filter);
+    public delegate Task<IReadOnlyList<(DomainId SchemaId, DomainId Id)>> CheckUniqueness(FilterNode<ClrValue> filter);
 
     public sealed class UniqueValidator : IValidator
     {

@@ -71,7 +71,7 @@ namespace Squidex.Domain.Apps.Entities.Apps
 
             using (var uploadStream = file.OpenRead())
             {
-                await appImageStore.UploadAsync(uploadImage.AppId, uploadStream);
+                await appImageStore.UploadAsync(uploadImage.AppId.Id, uploadStream);
             }
         }
     }

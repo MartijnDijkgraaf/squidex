@@ -5,11 +5,10 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
-using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using Squidex.Domain.Apps.Core.Contents;
 using Squidex.Domain.Apps.Entities.Contents.Commands;
+using Squidex.Infrastructure.Validation;
 
 namespace Squidex.Areas.Api.Controllers.Contents.Models
 {
@@ -18,7 +17,7 @@ namespace Squidex.Areas.Api.Controllers.Contents.Models
         /// <summary>
         /// The new status.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public Status Status { get; set; }
 
         /// <summary>
@@ -26,7 +25,7 @@ namespace Squidex.Areas.Api.Controllers.Contents.Models
         /// </summary>
         public Instant? DueTime { get; set; }
 
-        public ChangeContentStatus ToCommand(Guid id)
+        public ChangeContentStatus ToCommand(string id)
         {
             return new ChangeContentStatus { ContentId = id, Status = Status, DueTime = DueTime };
         }

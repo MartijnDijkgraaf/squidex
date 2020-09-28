@@ -5,7 +5,6 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,14 +22,19 @@ namespace Squidex.Domain.Apps.Entities.History
         private readonly IHistoryEventRepository repository;
         private readonly NotifoService notifo;
 
+        public int BatchSize
+        {
+            get { return 1000; }
+        }
+
+        public int BatchDelay
+        {
+            get { return 1000; }
+        }
+
         public string Name
         {
             get { return GetType().Name; }
-        }
-
-        public string EventsFilter
-        {
-            get { return ".*"; }
         }
 
         public HistoryService(IHistoryEventRepository repository, IEnumerable<IHistoryEventsCreator> creators, NotifoService notifo)
@@ -54,41 +58,51 @@ namespace Squidex.Domain.Apps.Entities.History
             this.notifo = notifo;
         }
 
-        public bool Handles(StoredEvent @event)
-        {
-            return true;
-        }
-
         public Task ClearAsync()
         {
             return repository.ClearAsync();
         }
 
-        public async Task On(Envelope<IEvent> @event)
+        public async Task On(IEnumerable<Envelope<IEvent>> @events)
         {
-            await notifo.HandleEventAsync(@event);
+            var targets = new List<(Envelope<AppEvent> Event, HistoryEvent? HistoryEvent)>();
 
-            foreach (var creator in creators)
+            foreach (var @event in events)
             {
-                var historyEvent = await creator.CreateEventAsync(@event);
-
-                if (historyEvent != null)
+                if (@event.Payload is AppEvent)
                 {
                     var appEvent = @event.To<AppEvent>();
 
-                    await notifo.HandleHistoryEventAsync(appEvent, historyEvent);
+                    HistoryEvent? historyEvent = null;
 
-                    historyEvent.Actor = appEvent.Payload.Actor;
-                    historyEvent.AppId = appEvent.Payload.AppId.Id;
-                    historyEvent.Created = @event.Headers.Timestamp();
-                    historyEvent.Version = @event.Headers.EventStreamNumber();
+                    foreach (var creator in creators)
+                    {
+                        historyEvent = await creator.CreateEventAsync(@event);
 
-                    await repository.InsertAsync(historyEvent);
+                        if (historyEvent != null)
+                        {
+                            historyEvent.Actor = appEvent.Payload.Actor;
+                            historyEvent.AppId = appEvent.Payload.AppId.Id;
+                            historyEvent.Created = @event.Headers.Timestamp();
+                            historyEvent.Version = @event.Headers.EventStreamNumber();
+
+                            break;
+                        }
+                    }
+
+                    targets.Add((appEvent, historyEvent));
                 }
+            }
+
+            if (targets.Count > 0)
+            {
+                await notifo.HandleEventsAsync(targets);
+
+                await repository.InsertManyAsync(targets.NotNull(x => x.HistoryEvent));
             }
         }
 
-        public async Task<IReadOnlyList<ParsedHistoryEvent>> QueryByChannelAsync(Guid appId, string channelPrefix, int count)
+        public async Task<IReadOnlyList<ParsedHistoryEvent>> QueryByChannelAsync(DomainId appId, string channelPrefix, int count)
         {
             var items = await repository.QueryByChannelAsync(appId, channelPrefix, count);
 

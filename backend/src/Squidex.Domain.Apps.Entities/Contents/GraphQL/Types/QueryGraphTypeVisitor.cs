@@ -5,9 +5,9 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using GraphQL;
 using GraphQL.Types;
 using Squidex.Domain.Apps.Core.Schemas;
 using Squidex.Domain.Apps.Entities.Schemas;
@@ -16,19 +16,19 @@ using Squidex.Infrastructure.Json.Objects;
 
 namespace Squidex.Domain.Apps.Entities.Contents.GraphQL.Types
 {
-    public delegate object ValueResolver(IJsonValue value, ResolveFieldContext context);
+    public delegate object ValueResolver(IJsonValue value, IResolveFieldContext context);
 
     public sealed class QueryGraphTypeVisitor : IFieldVisitor<(IGraphType?, ValueResolver?, QueryArguments?)>
     {
         private static readonly ValueResolver NoopResolver = (value, c) => value;
-        private readonly Dictionary<Guid, ContentGraphType> schemaTypes;
+        private readonly Dictionary<DomainId, ContentGraphType> schemaTypes;
         private readonly ISchemaEntity schema;
         private readonly IGraphModel model;
         private readonly IGraphType assetListType;
         private readonly string fieldName;
 
         public QueryGraphTypeVisitor(ISchemaEntity schema,
-            Dictionary<Guid, ContentGraphType> schemaTypes,
+            Dictionary<DomainId, ContentGraphType> schemaTypes,
             IGraphModel model,
             IGraphType assetListType,
             string fieldName)
@@ -42,7 +42,9 @@ namespace Squidex.Domain.Apps.Entities.Contents.GraphQL.Types
 
         public (IGraphType?, ValueResolver?, QueryArguments?) Visit(IArrayField field)
         {
-            return ResolveNested(field);
+            var schemaFieldType = new ListGraphType(new NonNullGraphType(new NestedGraphType(model, schema, field, fieldName)));
+
+            return (schemaFieldType, NoopResolver, null);
         }
 
         public (IGraphType?, ValueResolver?, QueryArguments?) Visit(IField<AssetsFieldProperties> field)
@@ -90,30 +92,14 @@ namespace Squidex.Domain.Apps.Entities.Contents.GraphQL.Types
             return (null, null, null);
         }
 
+        public (IGraphType?, ValueResolver?, QueryArguments?) Visit(IField<JsonFieldProperties> field)
+        {
+            return (AllTypes.NoopJson, ContentActions.Json.Resolver, ContentActions.Json.Arguments);
+        }
+
         private static (IGraphType?, ValueResolver?, QueryArguments?) ResolveDefault(IGraphType type)
         {
             return (type, NoopResolver, null);
-        }
-
-        private (IGraphType?, ValueResolver?, QueryArguments?) ResolveNested(IArrayField field)
-        {
-            var schemaFieldType = new ListGraphType(new NonNullGraphType(new NestedGraphType(model, schema, field, fieldName)));
-
-            return (schemaFieldType, NoopResolver, null);
-        }
-
-        public (IGraphType?, ValueResolver?, QueryArguments?) Visit(IField<JsonFieldProperties> field)
-        {
-            var resolver = new ValueResolver((value, c) =>
-            {
-                var path = c.Arguments.GetOrDefault(AllTypes.PathName);
-
-                value.TryGetByPath(path as string, out var result);
-
-                return result!;
-            });
-
-            return (AllTypes.NoopJson, resolver, AllTypes.PathArguments);
         }
 
         private (IGraphType?, ValueResolver?, QueryArguments?) ResolveAssets()

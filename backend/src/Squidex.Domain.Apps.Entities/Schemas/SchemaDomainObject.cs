@@ -21,21 +21,35 @@ using Squidex.Infrastructure.Log;
 using Squidex.Infrastructure.Orleans;
 using Squidex.Infrastructure.Reflection;
 using Squidex.Infrastructure.States;
-using Squidex.Infrastructure.Translations;
 
 namespace Squidex.Domain.Apps.Entities.Schemas
 {
     public class SchemaDomainObject : DomainObject<SchemaState>
     {
-        public SchemaDomainObject(IStore<Guid> store, ISemanticLog log)
+        public SchemaDomainObject(IStore<DomainId> store, ISemanticLog log)
             : base(store, log)
         {
         }
 
+        protected override bool IsDeleted()
+        {
+            return Snapshot.IsDeleted;
+        }
+
+        protected override bool CanAcceptCreation(ICommand command)
+        {
+            return command is SchemaCommand;
+        }
+
+        protected override bool CanAccept(ICommand command)
+        {
+            return command is SchemaUpdateCommand schemaCommand &&
+                Equals(schemaCommand.AppId, Snapshot.AppId) &&
+                Equals(schemaCommand.SchemaId?.Id, Snapshot.Id);
+        }
+
         public override Task<object?> ExecuteAsync(IAggregateCommand command)
         {
-            VerifyNotDeleted();
-
             switch (command)
             {
                 case AddField addField:
@@ -44,17 +58,6 @@ namespace Squidex.Domain.Apps.Entities.Schemas
                         GuardSchemaField.CanAdd(c, Snapshot.SchemaDef);
 
                         Add(c);
-
-                        long id;
-
-                        if (c.ParentFieldId == null)
-                        {
-                            id = Snapshot.SchemaDef.FieldsByName[c.Name].Id;
-                        }
-                        else
-                        {
-                            id = ((IArrayField)Snapshot.SchemaDef.FieldsById[c.ParentFieldId.Value]).FieldsByName[c.Name].Id;
-                        }
 
                         return Snapshot;
                     });
@@ -261,7 +264,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas
             };
 
             var schemaSource = Snapshot.SchemaDef;
-            var schemaTarget = command.ToSchema(schemaSource.Name, schemaSource.IsSingleton);
+            var schemaTarget = command.BuildSchema(schemaSource.Name, schemaSource.IsSingleton);
 
             var events = schemaSource.Synchronize(schemaTarget, () => Snapshot.SchemaFieldsTotal + 1, options);
 
@@ -273,7 +276,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas
 
         public void Create(CreateSchema command)
         {
-            RaiseEvent(command, new SchemaCreated { SchemaId = NamedId.Of(command.SchemaId, command.Name), Schema = command.ToSchema() });
+            RaiseEvent(command, new SchemaCreated { SchemaId = NamedId.Of(command.SchemaId, command.Name), Schema = command.BuildSchema() });
         }
 
         public void Add(AddField command)
@@ -366,7 +369,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas
             RaiseEvent(command, new SchemaDeleted());
         }
 
-        private void RaiseEvent<TCommand, TEvent>(TCommand command, TEvent @event) where TCommand : SchemaCommand where TEvent : SchemaEvent
+        private void RaiseEvent<TCommand, TEvent>(TCommand command, TEvent @event) where TCommand : class where TEvent : SchemaEvent
         {
             SimpleMapper.Map(command, @event);
 
@@ -408,15 +411,8 @@ namespace Squidex.Domain.Apps.Entities.Schemas
 
         private void RaiseEvent(SchemaEvent @event)
         {
-            if (@event.SchemaId == null)
-            {
-                @event.SchemaId = Snapshot.NamedId();
-            }
-
-            if (@event.AppId == null)
-            {
-                @event.AppId = Snapshot.AppId;
-            }
+            @event.AppId ??= Snapshot.AppId;
+            @event.SchemaId ??= Snapshot.NamedId();
 
             RaiseEvent(Envelope.Create(@event));
         }
@@ -424,14 +420,6 @@ namespace Squidex.Domain.Apps.Entities.Schemas
         private NamedId<long> CreateFieldId(AddField command)
         {
             return NamedId.Of(Snapshot.SchemaFieldsTotal + 1, command.Name);
-        }
-
-        private void VerifyNotDeleted()
-        {
-            if (Snapshot.IsDeleted)
-            {
-                throw new DomainException(T.Get("schemas.alreadyDeleted"));
-            }
         }
 
         public Task<J<ISchemaEntity>> GetStateAsync()

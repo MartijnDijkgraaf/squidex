@@ -9,7 +9,6 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Squidex.Domain.Apps.Entities;
-using Squidex.Domain.Apps.Entities.Schemas.Commands;
 using Squidex.Infrastructure;
 using Squidex.Infrastructure.Commands;
 
@@ -26,26 +25,24 @@ namespace Squidex.Web.CommandMiddlewares
             this.httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task HandleAsync(CommandContext context, NextDelegate next)
+        public Task HandleAsync(CommandContext context, NextDelegate next)
         {
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return next(context);
+            }
+
             if (context.Command is ISchemaCommand schemaCommand && schemaCommand.SchemaId == null)
             {
                 var schemaId = GetSchemaId();
 
-                schemaCommand.SchemaId = schemaId!;
+                schemaCommand.SchemaId = schemaId;
             }
 
-            if (context.Command is SchemaCommand schemaSelfCommand && schemaSelfCommand.SchemaId == Guid.Empty)
-            {
-                var schemaId = GetSchemaId();
-
-                schemaSelfCommand.SchemaId = schemaId?.Id ?? Guid.Empty;
-            }
-
-            await next(context);
+            return next(context);
         }
 
-        private NamedId<Guid> GetSchemaId()
+        private NamedId<DomainId> GetSchemaId()
         {
             var feature = httpContextAccessor.HttpContext.Features.Get<ISchemaFeature>();
 

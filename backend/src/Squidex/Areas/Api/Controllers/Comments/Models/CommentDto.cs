@@ -6,12 +6,12 @@
 // ==========================================================================
 
 using System;
-using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using Squidex.Domain.Apps.Core.Comments;
 using Squidex.Domain.Apps.Entities.Comments.Commands;
 using Squidex.Infrastructure;
 using Squidex.Infrastructure.Reflection;
+using Squidex.Infrastructure.Validation;
 
 namespace Squidex.Areas.Api.Controllers.Comments.Models
 {
@@ -20,24 +20,24 @@ namespace Squidex.Areas.Api.Controllers.Comments.Models
         /// <summary>
         /// The id of the comment.
         /// </summary>
-        public Guid Id { get; set; }
+        public DomainId Id { get; set; }
 
         /// <summary>
         /// The time when the comment was created or updated last.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public Instant Time { get; set; }
 
         /// <summary>
         /// The user who created or updated the comment.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public RefToken User { get; set; }
 
         /// <summary>
         /// The text of the comment.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string Text { get; set; }
 
         /// <summary>

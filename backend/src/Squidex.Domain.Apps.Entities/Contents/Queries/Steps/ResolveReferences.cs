@@ -22,7 +22,7 @@ namespace Squidex.Domain.Apps.Entities.Contents.Queries.Steps
 {
     public sealed class ResolveReferences : IContentEnricherStep
     {
-        private static readonly ILookup<Guid, IEnrichedContentEntity> EmptyContents = Enumerable.Empty<IEnrichedContentEntity>().ToLookup(x => x.Id);
+        private static readonly ILookup<DomainId, IEnrichedContentEntity> EmptyContents = Enumerable.Empty<IEnrichedContentEntity>().ToLookup(x => x.Id);
         private readonly Lazy<IContentQueryService> contentQuery;
         private readonly IRequestCache requestCache;
 
@@ -45,7 +45,7 @@ namespace Squidex.Domain.Apps.Entities.Contents.Queries.Steps
         {
             if (ShouldEnrich(context))
             {
-                var ids = new HashSet<Guid>();
+                var ids = new HashSet<DomainId>();
 
                 foreach (var group in contents.GroupBy(x => x.SchemaId.Id))
                 {
@@ -65,7 +65,7 @@ namespace Squidex.Domain.Apps.Entities.Contents.Queries.Steps
             }
         }
 
-        private async Task ResolveReferencesAsync(Context context, ISchemaEntity schema, IEnumerable<ContentEntity> contents, ILookup<Guid, IEnrichedContentEntity> references, ProvideSchema schemas)
+        private async Task ResolveReferencesAsync(Context context, ISchemaEntity schema, IEnumerable<ContentEntity> contents, ILookup<DomainId, IEnrichedContentEntity> references, ProvideSchema schemas)
         {
             var formatted = new Dictionary<IContentEntity, JsonObject>();
 
@@ -73,10 +73,7 @@ namespace Squidex.Domain.Apps.Entities.Contents.Queries.Steps
             {
                 foreach (var content in contents)
                 {
-                    if (content.ReferenceData == null)
-                    {
-                        content.ReferenceData = new NamedContentData();
-                    }
+                    content.ReferenceData ??= new NamedContentData();
 
                     var fieldReference = content.ReferenceData.GetOrAdd(field.Name, _ => new ContentFieldData())!;
 
@@ -98,8 +95,8 @@ namespace Squidex.Domain.Apps.Entities.Contents.Queries.Steps
 
                                     var referencedSchema = await schemas(reference.SchemaId.Id);
 
-                                    requestCache.AddDependency(referencedSchema.Id, referencedSchema.Version);
-                                    requestCache.AddDependency(reference.Id, reference.Version);
+                                    requestCache.AddDependency(referencedSchema.UniqueId, referencedSchema.Version);
+                                    requestCache.AddDependency(reference.UniqueId, reference.Version);
 
                                     var value = formatted.GetOrAdd(reference, x => Format(x, context, referencedSchema));
 
@@ -141,7 +138,7 @@ namespace Squidex.Domain.Apps.Entities.Contents.Queries.Steps
             return value;
         }
 
-        private void AddReferenceIds(HashSet<Guid> ids, ISchemaEntity schema, IEnumerable<ContentEntity> contents)
+        private static void AddReferenceIds(HashSet<DomainId> ids, ISchemaEntity schema, IEnumerable<ContentEntity> contents)
         {
             foreach (var content in contents)
             {
@@ -149,7 +146,7 @@ namespace Squidex.Domain.Apps.Entities.Contents.Queries.Steps
             }
         }
 
-        private async Task<ILookup<Guid, IEnrichedContentEntity>> GetReferencesAsync(Context context, HashSet<Guid> ids)
+        private async Task<ILookup<DomainId, IEnrichedContentEntity>> GetReferencesAsync(Context context, HashSet<DomainId> ids)
         {
             if (ids.Count == 0)
             {

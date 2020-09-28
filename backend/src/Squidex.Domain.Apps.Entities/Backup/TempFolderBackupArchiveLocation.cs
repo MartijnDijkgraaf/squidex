@@ -27,7 +27,7 @@ namespace Squidex.Domain.Apps.Entities.Backup
             this.jsonSerializer = jsonSerializer;
         }
 
-        public async Task<IBackupReader> OpenReaderAsync(Uri url, Guid id)
+        public async Task<IBackupReader> OpenReaderAsync(Uri url, DomainId id)
         {
             var stream = OpenStream(id);
 
@@ -54,7 +54,7 @@ namespace Squidex.Domain.Apps.Entities.Backup
                     {
                         client.Timeout = TimeSpan.FromHours(1);
 
-                        response = await client.GetAsync(url);
+                        response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
                         response.EnsureSuccessStatusCode();
 
                         using (var sourceStream = await response.Content.ReadAsStreamAsync())
@@ -67,6 +67,10 @@ namespace Squidex.Domain.Apps.Entities.Backup
                 {
                     throw new BackupRestoreException($"Cannot download the archive. Got status code: {response?.StatusCode}.", ex);
                 }
+                finally
+                {
+                    response?.Dispose();
+                }
             }
 
             try
@@ -75,19 +79,19 @@ namespace Squidex.Domain.Apps.Entities.Backup
             }
             catch (IOException)
             {
-                stream.Dispose();
+                await stream.DisposeAsync();
 
                 throw new BackupRestoreException("The backup archive is corrupt and cannot be opened.");
             }
             catch (Exception)
             {
-                stream.Dispose();
+                await stream.DisposeAsync();
 
                 throw;
             }
         }
 
-        public Stream OpenStream(Guid backupId)
+        public Stream OpenStream(DomainId backupId)
         {
             var tempFile = Path.Combine(Path.GetTempPath(), backupId + ".zip");
 

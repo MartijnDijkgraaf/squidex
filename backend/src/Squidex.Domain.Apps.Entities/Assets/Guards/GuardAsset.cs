@@ -5,7 +5,6 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Threading.Tasks;
 using Squidex.Domain.Apps.Entities.Assets.Commands;
 using Squidex.Infrastructure;
@@ -27,11 +26,11 @@ namespace Squidex.Domain.Apps.Entities.Assets.Guards
 
             return Validate.It(async e =>
             {
-                await CheckPathAsync(command.ParentId, assetQuery, e);
+                await CheckPathAsync(command.AppId.Id, command.ParentId, assetQuery, e);
             });
         }
 
-        public static Task CanMove(MoveAsset command, IAssetQueryService assetQuery, Guid oldParentId)
+        public static Task CanMove(MoveAsset command, IAssetQueryService assetQuery, DomainId oldParentId)
         {
             Guard.NotNull(command, nameof(command));
 
@@ -39,7 +38,7 @@ namespace Squidex.Domain.Apps.Entities.Assets.Guards
             {
                 if (command.ParentId != oldParentId)
                 {
-                    await CheckPathAsync(command.ParentId, assetQuery, e);
+                    await CheckPathAsync(command.AppId.Id, command.ParentId, assetQuery, e);
                 }
             });
         }
@@ -54,11 +53,11 @@ namespace Squidex.Domain.Apps.Entities.Assets.Guards
             Guard.NotNull(command, nameof(command));
         }
 
-        private static async Task CheckPathAsync(Guid parentId, IAssetQueryService assetQuery, AddValidation e)
+        private static async Task CheckPathAsync(DomainId appId, DomainId parentId, IAssetQueryService assetQuery, AddValidation e)
         {
-            if (parentId != default)
+            if (parentId != DomainId.Empty)
             {
-                var path = await assetQuery.FindAssetFolderAsync(parentId);
+                var path = await assetQuery.FindAssetFolderAsync(appId, parentId);
 
                 if (path.Count == 0)
                 {

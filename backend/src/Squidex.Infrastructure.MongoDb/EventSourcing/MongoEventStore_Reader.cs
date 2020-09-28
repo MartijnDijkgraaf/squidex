@@ -11,7 +11,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MongoDB.Driver;
-using Squidex.Infrastructure.Json.Objects;
 using Squidex.Infrastructure.Log;
 using Squidex.Infrastructure.MongoDb;
 using EventFilter = MongoDB.Driver.FilterDefinition<Squidex.Infrastructure.EventSourcing.MongoEventCommit>;
@@ -23,7 +22,6 @@ namespace Squidex.Infrastructure.EventSourcing
     public partial class MongoEventStore : MongoRepositoryBase<MongoEventCommit>, IEventStore
     {
         private static readonly List<StoredEvent> EmptyEvents = new List<StoredEvent>();
-        private static readonly EventPredicate EmptyPredicate = x => true;
 
         public Task CreateIndexAsync(string property)
         {
@@ -108,20 +106,6 @@ namespace Squidex.Infrastructure.EventSourcing
             }
         }
 
-        public Task QueryAsync(Func<StoredEvent, Task> callback, string property, object value, string? position = null, CancellationToken ct = default)
-        {
-            Guard.NotNull(callback, nameof(callback));
-            Guard.NotNullOrEmpty(property, nameof(property));
-            Guard.NotNull(value, nameof(value));
-
-            StreamPosition lastPosition = position;
-
-            var filterDefinition = CreateFilter(property, value, lastPosition);
-            var filterPredicate = CreateFilterPredicate(property, value);
-
-            return QueryAsync(callback, lastPosition, filterDefinition, filterPredicate, ct);
-        }
-
         public Task QueryAsync(Func<StoredEvent, Task> callback, string? streamFilter = null, string? position = null, CancellationToken ct = default)
         {
             Guard.NotNull(callback, nameof(callback));
@@ -129,18 +113,17 @@ namespace Squidex.Infrastructure.EventSourcing
             StreamPosition lastPosition = position;
 
             var filterDefinition = CreateFilter(streamFilter, lastPosition);
-            var filterPredicate = EmptyPredicate;
 
-            return QueryAsync(callback, lastPosition, filterDefinition, filterPredicate, ct);
+            return QueryAsync(callback, lastPosition, filterDefinition, ct);
         }
 
-        private async Task QueryAsync(Func<StoredEvent, Task> callback, StreamPosition position, EventFilter filter, EventPredicate predicate, CancellationToken ct = default)
+        private async Task QueryAsync(Func<StoredEvent, Task> callback, StreamPosition position, EventFilter filter, CancellationToken ct = default)
         {
             using (Profiler.TraceMethod<MongoEventStore>())
             {
-                await Collection.Find(filter, options: Batching.Options).Sort(Sort.Ascending(TimestampField)).ForEachPipelineAsync(async commit =>
+                await Collection.Find(filter, options: Batching.Options).Sort(Sort.Ascending(TimestampField)).ForEachPipedAsync(async commit =>
                 {
-                    foreach (var @event in commit.Filtered(position, predicate))
+                    foreach (var @event in commit.Filtered(position))
                     {
                         await callback(@event);
                     }
@@ -159,30 +142,6 @@ namespace Squidex.Infrastructure.EventSourcing
             }
 
             return byPosition;
-        }
-
-        private static EventFilter CreateFilter(string property, object value, StreamPosition streamPosition)
-        {
-            return Filter.And(Filtering.ByPosition(streamPosition), ByProperty(property, value));
-        }
-
-        private static EventPredicate CreateFilterPredicate(string? property, object? value)
-        {
-            if (!string.IsNullOrWhiteSpace(property))
-            {
-                var jsonValue = JsonValue.Create(value);
-
-                return x => x.Headers.TryGetValue(property, out var p) && p.Equals(jsonValue);
-            }
-            else
-            {
-                return EmptyPredicate;
-            }
-        }
-
-        private static EventFilter ByProperty(string property, object value)
-        {
-            return Builders<MongoEventCommit>.Filter.Eq(CreateIndexPath(property), value);
         }
 
         private static string CreateIndexPath(string property)

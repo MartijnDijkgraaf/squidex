@@ -5,7 +5,6 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using FakeItEasy;
@@ -32,7 +31,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
         private readonly IAppsByNameIndexGrain indexByName = A.Fake<IAppsByNameIndexGrain>();
         private readonly IAppsByUserIndexGrain indexByUser = A.Fake<IAppsByUserIndexGrain>();
         private readonly ICommandBus commandBus = A.Fake<ICommandBus>();
-        private readonly NamedId<Guid> appId = NamedId.Of(Guid.NewGuid(), "my-app");
+        private readonly NamedId<DomainId> appId = NamedId.Of(DomainId.NewGuid(), "my-app");
         private readonly string userId = "user-1";
         private readonly AppsIndex sut;
 
@@ -57,7 +56,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             var expected = SetupApp();
 
             A.CallTo(() => indexByName.GetIdsAsync(A<string[]>.That.IsSameSequenceAs(new[] { appId.Name })))
-                .Returns(new List<Guid> { appId.Id });
+                .Returns(new List<DomainId> { appId.Id });
 
             var actual = await sut.GetAppsForUserAsync(userId, new PermissionSet($"squidex.apps.{appId.Name}"));
 
@@ -70,7 +69,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             var expected = SetupApp();
 
             A.CallTo(() => indexByUser.GetIdsAsync())
-                .Returns(new List<Guid> { appId.Id });
+                .Returns(new List<DomainId> { appId.Id });
 
             var actual = await sut.GetAppsForUserAsync(userId, PermissionSet.Empty);
 
@@ -83,10 +82,10 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             var expected = SetupApp();
 
             A.CallTo(() => indexByName.GetIdsAsync(A<string[]>.That.IsSameSequenceAs(new[] { appId.Name })))
-                .Returns(new List<Guid> { appId.Id });
+                .Returns(new List<DomainId> { appId.Id });
 
             A.CallTo(() => indexByUser.GetIdsAsync())
-                .Returns(new List<Guid> { appId.Id });
+                .Returns(new List<DomainId> { appId.Id });
 
             var actual = await sut.GetAppsForUserAsync(userId, new PermissionSet($"squidex.apps.{appId.Name}"));
 
@@ -100,7 +99,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             var expected = SetupApp();
 
             A.CallTo(() => indexByName.GetIdsAsync())
-                .Returns(new List<Guid> { appId.Id });
+                .Returns(new List<DomainId> { appId.Id });
 
             var actual = await sut.GetAppsAsync();
 
@@ -121,7 +120,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             Assert.Same(expected, actual1);
             Assert.Same(expected, actual2);
 
-            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id.ToString(), null))
                 .MustHaveHappenedTwiceExactly();
 
             A.CallTo(() => indexByName.GetIdAsync(A<string>._))
@@ -144,7 +143,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             Assert.Same(expected, actual2);
             Assert.Same(expected, actual3);
 
-            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id.ToString(), null))
                 .MustHaveHappenedOnceExactly();
 
             A.CallTo(() => indexByName.GetIdAsync(A<string>._))
@@ -162,7 +161,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             Assert.Same(expected, actual1);
             Assert.Same(expected, actual2);
 
-            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id.ToString(), null))
                 .MustHaveHappenedTwiceExactly();
 
             A.CallTo(() => indexByName.GetIdAsync(A<string>._))
@@ -182,7 +181,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             Assert.Same(expected, actual2);
             Assert.Same(expected, actual3);
 
-            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id.ToString(), null))
                 .MustHaveHappenedOnceExactly();
 
             A.CallTo(() => indexByName.GetIdAsync(A<string>._))
@@ -316,7 +315,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
         {
             SetupApp();
 
-            var command = new AssignContributor { AppId = appId.Id, ContributorId = userId };
+            var command = new AssignContributor { AppId = appId, ContributorId = userId };
 
             var context =
                 new CommandContext(command, commandBus)
@@ -333,7 +332,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
         {
             SetupApp();
 
-            var command = new RemoveContributor { AppId = appId.Id, ContributorId = userId };
+            var command = new RemoveContributor { AppId = appId, ContributorId = userId };
 
             var context =
                 new CommandContext(command, commandBus)
@@ -350,7 +349,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
         {
             SetupApp();
 
-            var command = new ArchiveApp { AppId = appId.Id };
+            var command = new ArchiveApp { AppId = appId };
 
             var context =
                 new CommandContext(command, commandBus)
@@ -368,7 +367,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
         [Fact]
         public async Task Should_forward_call_when_rebuilding_for_contributors1()
         {
-            var apps = new HashSet<Guid>();
+            var apps = new HashSet<DomainId>();
 
             await sut.RebuildByContributorsAsync(userId, apps);
 
@@ -390,7 +389,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
         [Fact]
         public async Task Should_forward_call_when_rebuilding()
         {
-            var apps = new Dictionary<string, Guid>();
+            var apps = new Dictionary<string, DomainId>();
 
             await sut.RebuildAsync(apps);
 
@@ -443,7 +442,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Indexes
             A.CallTo(() => appGrain.GetStateAsync())
                 .Returns(J.Of(appEntity));
 
-            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<IAppGrain>(appId.Id.ToString(), null))
                 .Returns(appGrain);
 
             return appEntity;

@@ -5,15 +5,15 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Squidex.Infrastructure;
 
 namespace Squidex.Domain.Apps.Entities.Contents.Text.State
 {
     public sealed class InMemoryTextIndexerState : ITextIndexerState
     {
-        private readonly Dictionary<Guid, TextContentState> states = new Dictionary<Guid, TextContentState>();
+        private readonly Dictionary<DomainId, TextContentState> states = new Dictionary<DomainId, TextContentState>();
 
         public Task ClearAsync()
         {
@@ -22,26 +22,38 @@ namespace Squidex.Domain.Apps.Entities.Contents.Text.State
             return Task.CompletedTask;
         }
 
-        public Task<TextContentState?> GetAsync(Guid contentId)
+        public Task<Dictionary<DomainId, TextContentState>> GetAsync(HashSet<DomainId> ids)
         {
-            if (states.TryGetValue(contentId, out var result))
+            Guard.NotNull(ids, nameof(ids));
+
+            var result = new Dictionary<DomainId, TextContentState>();
+
+            foreach (var id in ids)
             {
-                return Task.FromResult<TextContentState?>(result);
+                if (states.TryGetValue(id, out var state))
+                {
+                    result.Add(id, state);
+                }
             }
 
-            return Task.FromResult<TextContentState?>(null);
+            return Task.FromResult(result);
         }
 
-        public Task RemoveAsync(Guid contentId)
+        public Task SetAsync(List<TextContentState> updates)
         {
-            states.Remove(contentId);
+            Guard.NotNull(updates, nameof(updates));
 
-            return Task.CompletedTask;
-        }
-
-        public Task SetAsync(TextContentState state)
-        {
-            states[state.ContentId] = state;
+            foreach (var update in updates)
+            {
+                if (update.IsDeleted)
+                {
+                    states.Remove(update.UniqueContentId);
+                }
+                else
+                {
+                    states[update.UniqueContentId] = update;
+                }
+            }
 
             return Task.CompletedTask;
         }

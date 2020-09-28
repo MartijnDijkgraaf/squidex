@@ -83,9 +83,9 @@ namespace Squidex.Domain.Apps.Entities.Contents.Queries
 
                     if (context.App != null)
                     {
-                        var schemaCache = new Dictionary<Guid, Task<ISchemaEntity>>();
+                        var schemaCache = new Dictionary<DomainId, Task<ISchemaEntity>>();
 
-                        Task<ISchemaEntity> GetSchema(Guid id)
+                        Task<ISchemaEntity> GetSchema(DomainId id)
                         {
                             return schemaCache.GetOrAdd(id, x => ContentQuery.GetSchemaOrThrowAsync(context, x.ToString()));
                         }

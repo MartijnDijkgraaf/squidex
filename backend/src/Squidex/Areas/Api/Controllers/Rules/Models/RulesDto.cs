@@ -5,11 +5,11 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Squidex.Domain.Apps.Entities.Rules;
+using Squidex.Infrastructure;
+using Squidex.Infrastructure.Validation;
 using Squidex.Web;
 
 namespace Squidex.Areas.Api.Controllers.Rules.Models
@@ -19,15 +19,15 @@ namespace Squidex.Areas.Api.Controllers.Rules.Models
         /// <summary>
         /// The rules.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public RuleDto[] Items { get; set; }
 
         /// <summary>
         /// The id of the rule that is currently rerunning.
         /// </summary>
-        public Guid? RunningRuleId { get; set; }
+        public DomainId? RunningRuleId { get; set; }
 
-        public static RulesDto FromRules(IEnumerable<IEnrichedRuleEntity> items, Guid? runningRuleId, Resources resources)
+        public static RulesDto FromRules(IEnumerable<IEnrichedRuleEntity> items, DomainId? runningRuleId, Resources resources)
         {
             var result = new RulesDto
             {
@@ -39,7 +39,7 @@ namespace Squidex.Areas.Api.Controllers.Rules.Models
             return result.CreateLinks(resources, runningRuleId);
         }
 
-        private RulesDto CreateLinks(Resources resources, Guid? runningRuleId)
+        private RulesDto CreateLinks(Resources resources, DomainId? runningRuleId)
         {
             var values = new { app = resources.App };
 

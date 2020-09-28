@@ -5,11 +5,10 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Squidex.Domain.Apps.Entities.Contents.Commands;
 using Squidex.Infrastructure.Reflection;
+using Squidex.Infrastructure.Validation;
 
 namespace Squidex.Areas.Api.Controllers.Contents.Models
 {
@@ -18,8 +17,8 @@ namespace Squidex.Areas.Api.Controllers.Contents.Models
         /// <summary>
         /// The contents to update or insert.
         /// </summary>
-        [Required]
-        public List<BulkUpdateJobDto> Jobs { get; set; }
+        [LocalizedRequired]
+        public BulkUpdateJobDto[]? Jobs { get; set; }
 
         /// <summary>
         /// True to automatically publish the content.
@@ -40,7 +39,7 @@ namespace Squidex.Areas.Api.Controllers.Contents.Models
         {
             var result = SimpleMapper.Map(this, new BulkUpdateContents());
 
-            result.Jobs = Jobs?.Select(x => x.ToJob())?.ToList();
+            result.Jobs = Jobs?.Select(x => x.ToJob())?.ToArray();
 
             return result;
         }

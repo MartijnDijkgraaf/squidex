@@ -54,13 +54,13 @@ namespace Squidex.Web.Pipeline
             await next();
         }
 
-        private Task<ISchemaEntity?> GetSchemaAsync(Guid appId, string schemaIdOrName, ClaimsPrincipal user)
+        private Task<ISchemaEntity?> GetSchemaAsync(DomainId appId, string schemaIdOrName, ClaimsPrincipal user)
         {
             var canCache = !user.IsInClient(DefaultClients.Frontend);
 
-            if (Guid.TryParse(schemaIdOrName, out var id))
+            if (Guid.TryParse(schemaIdOrName, out var guid))
             {
-                return appProvider.GetSchemaAsync(appId, id, false, canCache);
+                return appProvider.GetSchemaAsync(appId, guid, false, canCache);
             }
             else
             {

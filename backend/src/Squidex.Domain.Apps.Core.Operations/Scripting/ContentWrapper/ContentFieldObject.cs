@@ -23,7 +23,7 @@ namespace Squidex.Domain.Apps.Core.Scripting.ContentWrapper
     {
         private readonly ContentDataObject contentData;
         private readonly ContentFieldData? fieldData;
-        private HashSet<string> valuesToDelete;
+        private HashSet<string>? valuesToDelete;
         private Dictionary<string, PropertyDescriptor> valueProperties;
         private bool isChanged;
 
@@ -87,14 +87,11 @@ namespace Squidex.Domain.Apps.Core.Scripting.ContentWrapper
 
         public override void RemoveOwnProperty(JsValue property)
         {
-            if (valuesToDelete == null)
-            {
-                valuesToDelete = new HashSet<string>();
-            }
-
             var propertyName = property.AsString();
 
+            valuesToDelete ??= new HashSet<string>();
             valuesToDelete.Add(propertyName);
+
             valueProperties?.Remove(propertyName);
 
             MarkChanged();

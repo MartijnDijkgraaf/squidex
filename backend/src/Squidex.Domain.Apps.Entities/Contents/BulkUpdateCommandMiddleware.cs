@@ -9,7 +9,6 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.Extensions.DependencyInjection;
 using Squidex.Domain.Apps.Entities.Contents.Commands;
 using Squidex.Infrastructure;
 using Squidex.Infrastructure.Commands;
@@ -20,17 +19,14 @@ namespace Squidex.Domain.Apps.Entities.Contents
 {
     public sealed class BulkUpdateCommandMiddleware : ICommandMiddleware
     {
-        private readonly IServiceProvider serviceProvider;
         private readonly IContentQueryService contentQuery;
         private readonly IContextProvider contextProvider;
 
-        public BulkUpdateCommandMiddleware(IServiceProvider serviceProvider, IContentQueryService contentQuery, IContextProvider contextProvider)
+        public BulkUpdateCommandMiddleware(IContentQueryService contentQuery, IContextProvider contextProvider)
         {
-            Guard.NotNull(serviceProvider, nameof(serviceProvider));
             Guard.NotNull(contentQuery, nameof(contentQuery));
             Guard.NotNull(contextProvider, nameof(contextProvider));
 
-            this.serviceProvider = serviceProvider;
             this.contentQuery = contentQuery;
             this.contextProvider = contextProvider;
         }
@@ -39,12 +35,12 @@ namespace Squidex.Domain.Apps.Entities.Contents
         {
             if (context.Command is BulkUpdateContents bulkUpdates)
             {
-                if (bulkUpdates.Jobs?.Count > 0)
+                if (bulkUpdates.Jobs?.Length > 0)
                 {
                     var requestContext = contextProvider.Context.WithoutContentEnrichment().WithUnpublished(true);
                     var requestedSchema = bulkUpdates.SchemaId.Name;
 
-                    var results = new BulkUpdateResultItem[bulkUpdates.Jobs.Count];
+                    var results = new BulkUpdateResultItem[bulkUpdates.Jobs.Length];
 
                     var actionBlock = new ActionBlock<int>(async index =>
                     {
@@ -62,29 +58,22 @@ namespace Squidex.Domain.Apps.Entities.Contents
                             {
                                 case BulkUpdateType.Upsert:
                                     {
-                                        if (id.HasValue)
+                                        var command = SimpleMapper.Map(bulkUpdates, new UpsertContent { Data = job.Data });
+
+                                        if (id != null && id != DomainId.Empty)
                                         {
-                                            var command = SimpleMapper.Map(bulkUpdates, new UpdateContent { Data = job.Data, ContentId = id.Value });
-
-                                            await context.CommandBus.PublishAsync(command);
-
-                                            results[index] = new BulkUpdateResultItem { ContentId = id };
-                                        }
-                                        else
-                                        {
-                                            var command = SimpleMapper.Map(bulkUpdates, new CreateContent { Data = job.Data });
-
-                                            await InsertAsync(command);
-
-                                            result.ContentId = command.ContentId;
+                                            command.ContentId = id.Value;
                                         }
 
+                                        result.ContentId = command.ContentId;
+
+                                        await context.CommandBus.PublishAsync(command);
                                         break;
                                     }
 
                                 case BulkUpdateType.ChangeStatus:
                                     {
-                                        if (id == null || id == default)
+                                        if (id == null || id == DomainId.Empty)
                                         {
                                             throw new DomainObjectNotFoundException("undefined");
                                         }
@@ -102,7 +91,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
 
                                 case BulkUpdateType.Delete:
                                     {
-                                        if (id == null || id == default)
+                                        if (id == null || id == DomainId.Empty)
                                         {
                                             throw new DomainObjectNotFoundException("undefined");
                                         }
@@ -125,7 +114,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
                         MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
                     });
 
-                    for (var i = 0; i < bulkUpdates.Jobs.Count; i++)
+                    for (var i = 0; i < bulkUpdates.Jobs.Length; i++)
                     {
                         await actionBlock.SendAsync(i);
                     }
@@ -147,16 +136,7 @@ namespace Squidex.Domain.Apps.Entities.Contents
             }
         }
 
-        private async Task InsertAsync(CreateContent command)
-        {
-            var content = serviceProvider.GetRequiredService<ContentDomainObject>();
-
-            content.Setup(command.ContentId);
-
-            await content.ExecuteAsync(command);
-        }
-
-        private async Task<Guid?> FindIdAsync(Context context, string schema, BulkUpdateJob job)
+        private async Task<DomainId?> FindIdAsync(Context context, string schema, BulkUpdateJob job)
         {
             var id = job.Id;
 

@@ -8,13 +8,24 @@
 using System;
 using System.Threading.Tasks;
 using Squidex.Domain.Apps.Events.Assets;
+using Squidex.Infrastructure;
 using Squidex.Infrastructure.EventSourcing;
 using Squidex.Infrastructure.UsageTracking;
 
 namespace Squidex.Domain.Apps.Entities.Assets
 {
-    public partial class AssetUsageTracker
+    public partial class AssetUsageTracker : IEventConsumer
     {
+        public int BatchSize
+        {
+            get { return 1000; }
+        }
+
+        public int BatchDelay
+        {
+            get { return 1000; }
+        }
+
         public string Name
         {
             get { return GetType().Name; }
@@ -23,16 +34,6 @@ namespace Squidex.Domain.Apps.Entities.Assets
         public string EventsFilter
         {
             get { return "^asset-"; }
-        }
-
-        public bool Handles(StoredEvent @event)
-        {
-            return true;
-        }
-
-        public Task ClearAsync()
-        {
-            return Task.CompletedTask;
         }
 
         public Task On(Envelope<IEvent> @event)
@@ -57,7 +58,7 @@ namespace Squidex.Domain.Apps.Entities.Assets
             return @event.Headers.Timestamp().ToDateTimeUtc().Date;
         }
 
-        private Task UpdateSizeAsync(Guid appId, DateTime date, long size, long count)
+        private Task UpdateSizeAsync(DomainId appId, DateTime date, long size, long count)
         {
             var counters = new Counters
             {
@@ -72,7 +73,7 @@ namespace Squidex.Domain.Apps.Entities.Assets
                 usageTracker.TrackAsync(SummaryDate, appKey, null, counters));
         }
 
-        private static string GetKey(Guid appId)
+        private static string GetKey(DomainId appId)
         {
             return $"{appId}_Assets";
         }

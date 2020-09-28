@@ -9,6 +9,7 @@ using System;
 using Squidex.Domain.Apps.Core.Apps;
 using Squidex.Domain.Apps.Core.Contents;
 using Squidex.Domain.Apps.Events.Apps;
+using Squidex.Infrastructure;
 using Squidex.Infrastructure.Commands;
 using Squidex.Infrastructure.EventSourcing;
 using Squidex.Infrastructure.Reflection;
@@ -45,12 +46,19 @@ namespace Squidex.Domain.Apps.Entities.Apps.State
 
         public bool IsArchived { get; set; }
 
+        public DomainId UniqueId
+        {
+            get { return Id; }
+        }
+
         public override bool ApplyEvent(IEvent @event)
         {
             switch (@event)
             {
                 case AppCreated e:
                     {
+                        Id = e.AppId.Id;
+
                         SimpleMapper.Map(e, this);
 
                         return true;
@@ -70,7 +78,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.State
                     return UpdateImage(e, ev => null);
 
                 case AppPlanChanged e when Is.Change(Plan?.PlanId, e.PlanId):
-                    return UpdatePlan(e, ev => new AppPlan(ev.Actor, ev.PlanId));
+                    return UpdatePlan(e, ev => ev.ToAppPlan());
 
                 case AppPlanReset e when Plan != null:
                     return UpdatePlan(e, ev => null);
@@ -112,7 +120,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.State
                     return UpdateRoles(e, (ev, r) => r.Add(ev.Name));
 
                 case AppRoleUpdated e:
-                    return UpdateRoles(e, (ev, r) => r.Update(ev.Name, ev.Permissions));
+                    return UpdateRoles(e, (ev, r) => r.Update(ev.Name, ev.ToPermissions(), ev.Properties));
 
                 case AppRoleDeleted e:
                     return UpdateRoles(e, (ev, r) => r.Remove(ev.Name));
@@ -126,7 +134,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.State
                 case AppLanguageUpdated e:
                     return UpdateLanguages(e, (ev, l) =>
                     {
-                        l = l.Set(ev.Language, ev.IsOptional, ev.Fallback?.ToArray());
+                        l = l.Set(ev.Language, ev.IsOptional, ev.Fallback);
 
                         if (ev.IsMaster)
                         {

@@ -14,12 +14,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Migrations.Migrations.MongoDb;
 using MongoDB.Driver;
-using MongoDB.Driver.GridFS;
 using Squidex.Domain.Apps.Entities.Assets.Repositories;
 using Squidex.Domain.Apps.Entities.Assets.State;
 using Squidex.Domain.Apps.Entities.Contents.Repositories;
 using Squidex.Domain.Apps.Entities.Contents.State;
-using Squidex.Domain.Apps.Entities.Contents.Text.Lucene;
+using Squidex.Domain.Apps.Entities.Contents.Text;
 using Squidex.Domain.Apps.Entities.Contents.Text.State;
 using Squidex.Domain.Apps.Entities.History.Repositories;
 using Squidex.Domain.Apps.Entities.MongoDb.Assets;
@@ -82,6 +81,9 @@ namespace Squidex.Config.Domain
                     services.AddTransientAs<RenameAssetMetadata>()
                         .As<IMigration>();
 
+                    services.AddTransientAs<AddAppIdToEventStream>()
+                        .As<IMigration>();
+
                     services.AddHealthChecks()
                         .AddCheck<MongoDBHealthCheck>("MongoDB", tags: new[] { "node" });
 
@@ -110,18 +112,18 @@ namespace Squidex.Config.Domain
                         .As<ISigningCredentialStore>().As<IValidationKeysStore>();
 
                     services.AddSingletonAs<MongoAssetRepository>()
-                        .As<IAssetRepository>().As<ISnapshotStore<AssetState, Guid>>();
+                        .As<IAssetRepository>().As<ISnapshotStore<AssetState, DomainId>>();
 
                     services.AddSingletonAs<MongoAssetFolderRepository>()
-                        .As<IAssetFolderRepository>().As<ISnapshotStore<AssetFolderState, Guid>>();
+                        .As<IAssetFolderRepository>().As<ISnapshotStore<AssetFolderState, DomainId>>();
 
                     services.AddSingletonAs(c => ActivatorUtilities.CreateInstance<MongoContentRepository>(c, GetDatabase(c, mongoContentDatabaseName)))
-                        .As<IContentRepository>().As<ISnapshotStore<ContentState, Guid>>();
+                        .As<IContentRepository>().As<ISnapshotStore<ContentState, DomainId>>();
+
+                    services.AddSingletonAs<MongoTextIndex>()
+                        .AsOptional<ITextIndex>();
 
                     services.AddSingletonAs<MongoTextIndexerState>()
-                        .AsSelf();
-
-                    services.AddSingletonAs(c => new CachingTextIndexerState(c.GetRequiredService<MongoTextIndexerState>()))
                         .As<ITextIndexerState>();
 
                     var registration = services.FirstOrDefault(x => x.ServiceType == typeof(IPersistedGrantStore));
@@ -131,18 +133,6 @@ namespace Squidex.Config.Domain
                         services.AddSingletonAs<MongoPersistedGrantStore>()
                             .As<IPersistedGrantStore>();
                     }
-
-                    services.AddSingletonAs(c =>
-                    {
-                        var database = c.GetRequiredService<IMongoDatabase>();
-
-                        var mongoBucket = new GridFSBucket<string>(database, new GridFSBucketOptions
-                        {
-                            BucketName = "fullText"
-                        });
-
-                        return new MongoIndexStorage(mongoBucket);
-                    }).As<IIndexStorage>();
                 }
             });
 

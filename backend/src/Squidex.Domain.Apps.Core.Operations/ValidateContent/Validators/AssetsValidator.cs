@@ -16,7 +16,7 @@ using Squidex.Infrastructure.Translations;
 
 namespace Squidex.Domain.Apps.Core.ValidateContent.Validators
 {
-    public delegate Task<IReadOnlyList<IAssetInfo>> CheckAssets(IEnumerable<Guid> ids);
+    public delegate Task<IReadOnlyList<IAssetInfo>> CheckAssets(IEnumerable<DomainId> ids);
 
     public sealed class AssetsValidator : IValidator
     {
@@ -40,7 +40,7 @@ namespace Squidex.Domain.Apps.Core.ValidateContent.Validators
                 return;
             }
 
-            if (value is ICollection<Guid> assetIds && assetIds.Count > 0)
+            if (value is ICollection<DomainId> assetIds && assetIds.Count > 0)
             {
                 var assets = await checkAssets(assetIds);
                 var index = 0;

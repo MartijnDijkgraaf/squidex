@@ -5,11 +5,11 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Squidex.Domain.Apps.Core.Apps;
 using Squidex.Domain.Apps.Entities.Apps;
+using Squidex.Infrastructure.Json.Objects;
+using Squidex.Infrastructure.Validation;
 using Squidex.Web;
 
 namespace Squidex.Areas.Api.Controllers.Apps.Models
@@ -19,7 +19,7 @@ namespace Squidex.Areas.Api.Controllers.Apps.Models
         /// <summary>
         /// The role name.
         /// </summary>
-        [Required]
+        [LocalizedRequired]
         public string Name { get; set; }
 
         /// <summary>
@@ -40,19 +40,24 @@ namespace Squidex.Areas.Api.Controllers.Apps.Models
         /// <summary>
         /// Associated list of permissions.
         /// </summary>
-        [Required]
-        public IEnumerable<string> Permissions { get; set; }
+        [LocalizedRequired]
+        public string[] Permissions { get; set; }
+
+        /// <summary>
+        /// Associated list of UI properties.
+        /// </summary>
+        [LocalizedRequired]
+        public JsonObject Properties { get; set; }
 
         public static RoleDto FromRole(Role role, IAppEntity app)
         {
-            var permissions = role.Permissions;
-
             var result = new RoleDto
             {
                 Name = role.Name,
                 NumClients = GetNumClients(role, app),
                 NumContributors = GetNumContributors(role, app),
-                Permissions = permissions.ToIds(),
+                Permissions = role.Permissions.ToIds().ToArray(),
+                Properties = role.Properties,
                 IsDefaultRole = role.IsDefault
             };
 

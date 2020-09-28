@@ -71,17 +71,17 @@ namespace Squidex.Areas.Api.Controllers.Assets
         [ApiPermission]
         [ApiCosts(0.5)]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAssetContentBySlug(string app, string idOrSlug, string more, [FromQuery] AssetContentQueryDto queries)
+        public async Task<IActionResult> GetAssetContentBySlug(string app, string idOrSlug, [FromQuery] AssetContentQueryDto queries, string? more = null)
         {
             IAssetEntity? asset;
 
             if (Guid.TryParse(idOrSlug, out var guid))
             {
-                asset = await assetRepository.FindAssetAsync(guid);
+                asset = await assetRepository.FindAssetAsync(AppId, guid);
             }
             else
             {
-                asset = await assetRepository.FindAssetBySlugAsync(App.Id, idOrSlug);
+                asset = await assetRepository.FindAssetBySlugAsync(AppId, idOrSlug);
             }
 
             return await DeliverAssetAsync(asset, queries);
@@ -102,7 +102,8 @@ namespace Squidex.Areas.Api.Controllers.Assets
         [ApiPermission]
         [ApiCosts(0.5)]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAssetContent(Guid id, [FromQuery] AssetContentQueryDto queries)
+        [Obsolete]
+        public async Task<IActionResult> GetAssetContent(string id, [FromQuery] AssetContentQueryDto queries)
         {
             var asset = await assetRepository.FindAssetAsync(id);
 
@@ -120,12 +121,14 @@ namespace Squidex.Areas.Api.Controllers.Assets
 
             if (asset.IsProtected && !Resources.CanReadAssets)
             {
+                Response.Headers[HeaderNames.CacheControl] = $"public,max-age=0";
+
                 return StatusCode(403);
             }
 
             if (queries.Version > EtagVersion.Any && asset.Version != queries.Version)
             {
-                asset = await assetLoader.GetAsync(asset.Id, queries.Version);
+                asset = await assetLoader.GetAsync(App.Id, asset.Id, queries.Version);
             }
 
             var resizeOptions = queries.ToResizeOptions(asset);
@@ -143,9 +146,9 @@ namespace Squidex.Areas.Api.Controllers.Assets
 
             if (asset.Type == AssetType.Image && resizeOptions.IsValid)
             {
-                callback = new FileCallback(async (bodyStream, range, ct) =>
+                callback = async (bodyStream, range, ct) =>
                 {
-                    var resizedAsset = $"{asset.Id}_{asset.FileVersion}_{resizeOptions}";
+                    var resizedAsset = $"{asset.AppId.Id}_{asset.Id}_{asset.FileVersion}_{resizeOptions}";
 
                     if (queries.ForceResize)
                     {
@@ -155,23 +158,23 @@ namespace Squidex.Areas.Api.Controllers.Assets
                     {
                         try
                         {
-                            await assetStore.DownloadAsync(resizedAsset, bodyStream);
+                            await assetStore.DownloadAsync(resizedAsset, bodyStream, ct: ct);
                         }
                         catch (AssetNotFoundException)
                         {
                             await ResizeAsync(asset, bodyStream, resizedAsset, resizeOptions, false, ct);
                         }
                     }
-                });
+                };
             }
             else
             {
                 contentLength = asset.FileSize;
 
-                callback = new FileCallback(async (bodyStream, range, ct) =>
+                callback = async (bodyStream, range, ct) =>
                 {
-                    await assetFileStore.DownloadAsync(asset.Id, asset.FileVersion, bodyStream, range, ct);
-                });
+                    await assetFileStore.DownloadAsync(asset.AppId.Id, asset.Id, asset.FileVersion, bodyStream, range, ct);
+                };
             }
 
             return new FileCallbackResult(asset.MimeType, callback)
@@ -195,7 +198,7 @@ namespace Squidex.Areas.Api.Controllers.Assets
                     {
                         using (Profiler.Trace("ResizeDownload"))
                         {
-                            await assetFileStore.DownloadAsync(asset.Id, asset.FileVersion, sourceStream);
+                            await assetFileStore.DownloadAsync(asset.AppId.Id, asset.Id, asset.FileVersion, sourceStream);
                             sourceStream.Position = 0;
                         }
 

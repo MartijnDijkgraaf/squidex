@@ -23,7 +23,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas
             {
                 IsPublished = true,
                 Properties = new SchemaProperties { Hints = "MyHints" },
-                Fields = new List<UpsertSchemaField>
+                Fields = new[]
                 {
                     new UpsertSchemaField
                     {
@@ -72,7 +72,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas
                     })
                     .Publish();
 
-            var actual = command.ToSchema("my-schema", false);
+            var actual = command.BuildSchema("my-schema", false);
 
             actual.Should().BeEquivalentTo(expected);
         }

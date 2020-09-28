@@ -5,11 +5,13 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Squidex.Domain.Apps.Entities.Contents.Text.State;
+using Squidex.Infrastructure;
 using Squidex.Infrastructure.MongoDb;
 
 namespace Squidex.Domain.Apps.Entities.MongoDb.FullText
@@ -20,7 +22,7 @@ namespace Squidex.Domain.Apps.Entities.MongoDb.FullText
         {
             BsonClassMap.RegisterClassMap<TextContentState>(cm =>
             {
-                cm.MapIdField(x => x.ContentId);
+                cm.MapIdField(x => x.UniqueContentId);
 
                 cm.MapProperty(x => x.DocIdCurrent)
                     .SetElementName("c");
@@ -43,19 +45,37 @@ namespace Squidex.Domain.Apps.Entities.MongoDb.FullText
             return "TextIndexerState";
         }
 
-        public Task<TextContentState?> GetAsync(Guid contentId)
+        public async Task<Dictionary<DomainId, TextContentState>> GetAsync(HashSet<DomainId> ids)
         {
-            return Collection.Find(x => x.ContentId == contentId).FirstOrDefaultAsync()!;
+            var entities = await Collection.Find(Filter.In(x => x.UniqueContentId, ids)).ToListAsync();
+
+            return entities.ToDictionary(x => x.UniqueContentId);
         }
 
-        public Task RemoveAsync(Guid contentId)
+        public Task SetAsync(List<TextContentState> updates)
         {
-            return Collection.DeleteOneAsync(x => x.ContentId == contentId);
-        }
+            var writes = new List<WriteModel<TextContentState>>();
 
-        public Task SetAsync(TextContentState state)
-        {
-            return Collection.ReplaceOneAsync(x => x.ContentId == state.ContentId, state, UpsertReplace);
+            foreach (var update in updates)
+            {
+                if (update.IsDeleted)
+                {
+                    writes.Add(
+                        new DeleteOneModel<TextContentState>(
+                            Filter.Eq(x => x.UniqueContentId, update.UniqueContentId)));
+                }
+                else
+                {
+                    writes.Add(
+                        new ReplaceOneModel<TextContentState>(
+                            Filter.Eq(x => x.UniqueContentId, update.UniqueContentId), update)
+                        {
+                            IsUpsert = true
+                        });
+                }
+            }
+
+            return Collection.BulkWriteAsync(writes);
         }
     }
 }

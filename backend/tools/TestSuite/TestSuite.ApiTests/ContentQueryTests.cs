@@ -35,7 +35,7 @@ namespace TestSuite.ApiTests
         {
             var items = await _.Contents.GetAsync(new ContentQuery { OrderBy = "data/number/iv asc" });
 
-            var itemsById = await _.Contents.GetAsync(new HashSet<Guid>(items.Items.Take(3).Select(x => x.Id)));
+            var itemsById = await _.Contents.GetAsync(new HashSet<string>(items.Items.Take(3).Select(x => x.Id)));
 
             Assert.Equal(3, itemsById.Items.Count);
             Assert.Equal(3, itemsById.Total);
@@ -177,6 +177,70 @@ namespace TestSuite.ApiTests
             });
 
             AssertItems(items, 3, new[] { 4, 5, 6 });
+        }
+
+        [Fact]
+        public async Task Should_create_and_query_with_inline_graphql()
+        {
+            var query = new
+            {
+                query = @"
+                    mutation {
+                        createMyReadsContent(data: {
+                            number: {
+                                iv: 999
+                            }
+                        }) {
+                            id,
+                            data {
+                                number {
+                                    iv
+                                }
+                            }
+                        }
+                    }"
+            };
+
+            var result = await _.Contents.GraphQlAsync<JObject>(query);
+
+            var value = result["createMyReadsContent"]["data"]["number"]["iv"].Value<int>();
+
+            Assert.Equal(999, value);
+        }
+
+        [Fact]
+        public async Task Should_create_and_query_with_variable_graphql()
+        {
+            var query = new
+            {
+                query = @"
+                    mutation Mutation($data: MyReadsDataInputDto!) {
+                        createMyReadsContent(data: $data) {
+                            id,
+                            data {
+                                number {
+                                    iv
+                                }
+                            }
+                        }
+                    }",
+                variables = new
+                {
+                    data = new
+                    {
+                        number = new
+                        {
+                            iv = 998
+                        }
+                    }
+                }
+            };
+
+            var result = await _.Contents.GraphQlAsync<JObject>(query);
+
+            var value = result["createMyReadsContent"]["data"]["number"]["iv"].Value<int>();
+
+            Assert.Equal(998, value);
         }
 
         [Fact]

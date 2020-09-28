@@ -240,7 +240,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Templates
             await publish(schema);
         }
 
-        private static async Task<NamedId<Guid>> CreateApiScopesSchemaAsync(Func<ICommand, Task> publish)
+        private static async Task<NamedId<DomainId>> CreateApiScopesSchemaAsync(Func<ICommand, Task> publish)
         {
             var schema =
                 SchemaBuilder.Create("API Scopes")
@@ -270,7 +270,7 @@ namespace Squidex.Domain.Apps.Entities.Apps.Templates
             return NamedId.Of(schema.SchemaId, schema.Name);
         }
 
-        private static Task CreateApiResourcesSchemaAsync(Func<ICommand, Task> publish, NamedId<Guid> scopeId)
+        private static Task CreateApiResourcesSchemaAsync(Func<ICommand, Task> publish, NamedId<DomainId> scopeId)
         {
             var schema =
                 SchemaBuilder.Create("API Resources")

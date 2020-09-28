@@ -5,7 +5,6 @@
 //  All rights reserved. Licensed under the MIT license.
 // ==========================================================================
 
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using FakeItEasy;
@@ -30,13 +29,13 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
         private readonly IGrainFactory grainFactory = A.Fake<IGrainFactory>();
         private readonly ICommandBus commandBus = A.Fake<ICommandBus>();
         private readonly ISchemasByAppIndexGrain index = A.Fake<ISchemasByAppIndexGrain>();
-        private readonly NamedId<Guid> appId = NamedId.Of(Guid.NewGuid(), "my-app");
-        private readonly NamedId<Guid> schemaId = NamedId.Of(Guid.NewGuid(), "my-schema");
+        private readonly NamedId<DomainId> appId = NamedId.Of(DomainId.NewGuid(), "my-app");
+        private readonly NamedId<DomainId> schemaId = NamedId.Of(DomainId.NewGuid(), "my-schema");
         private readonly SchemasIndex sut;
 
         public SchemasIndexTests()
         {
-            A.CallTo(() => grainFactory.GetGrain<ISchemasByAppIndexGrain>(appId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<ISchemasByAppIndexGrain>(appId.Id.ToString(), null))
                 .Returns(index);
 
             var cache =
@@ -60,7 +59,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             Assert.Same(expected, actual1);
             Assert.Same(expected, actual2);
 
-            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(schemaId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(A<string>._, null))
                 .MustHaveHappenedTwiceExactly();
 
             A.CallTo(() => index.GetIdAsync(A<string>._))
@@ -83,7 +82,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             Assert.Same(expected, actual2);
             Assert.Same(expected, actual3);
 
-            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(schemaId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(A<string>._, null))
                 .MustHaveHappenedOnceExactly();
 
             A.CallTo(() => index.GetIdAsync(A<string>._))
@@ -101,7 +100,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             Assert.Same(expected, actual1);
             Assert.Same(expected, actual2);
 
-            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(schemaId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(A<string>._, null))
                 .MustHaveHappenedTwiceExactly();
 
             A.CallTo(() => index.GetIdAsync(A<string>._))
@@ -121,7 +120,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             Assert.Same(expected, actual2);
             Assert.Same(expected, actual3);
 
-            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(schemaId.Id, null))
+            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(A<string>._, null))
                 .MustHaveHappenedOnceExactly();
 
             A.CallTo(() => index.GetIdAsync(A<string>._))
@@ -134,7 +133,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             var schema = SetupSchema();
 
             A.CallTo(() => index.GetIdsAsync())
-                .Returns(new List<Guid> { schema.Id });
+                .Returns(new List<DomainId> { schema.Id });
 
             var actual = await sut.GetSchemasAsync(appId.Id);
 
@@ -147,7 +146,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             var schema = SetupSchema(EtagVersion.NotFound);
 
             A.CallTo(() => index.GetIdsAsync())
-                .Returns(new List<Guid> { schema.Id });
+                .Returns(new List<DomainId> { schema.Id });
 
             var actual = await sut.GetSchemasAsync(appId.Id);
 
@@ -248,7 +247,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
         {
             var schema = SetupSchema();
 
-            var command = new DeleteSchema { SchemaId = schema.Id };
+            var command = new DeleteSchema { SchemaId = schemaId, AppId = appId };
 
             var context =
                 new CommandContext(command, commandBus)
@@ -263,7 +262,7 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
         [Fact]
         public async Task Should_forward_call_when_rebuilding()
         {
-            var schemas = new Dictionary<string, Guid>();
+            var schemas = new Dictionary<string, DomainId>();
 
             await sut.RebuildAsync(appId.Id, schemas);
 
@@ -294,7 +293,9 @@ namespace Squidex.Domain.Apps.Entities.Schemas.Indexes
             A.CallTo(() => schemaGrain.GetStateAsync())
                 .Returns(J.Of(schemaEntity));
 
-            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(schemaId.Id, null))
+            var key = DomainId.Combine(appId, schemaId.Id).ToString();
+
+            A.CallTo(() => grainFactory.GetGrain<ISchemaGrain>(key, null))
                 .Returns(schemaGrain);
 
             return schemaEntity;

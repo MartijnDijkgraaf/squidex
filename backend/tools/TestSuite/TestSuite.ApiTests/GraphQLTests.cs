@@ -21,11 +21,11 @@ using Xunit;
 namespace TestSuite.ApiTests
 {
     [Trait("Category", "NotAutomated")]
-    public sealed class GraphQLTests : IClassFixture<CreatedAppFixture>
+    public sealed class GraphQLTests : IClassFixture<ContentFixture>
     {
-        public CreatedAppFixture _ { get; }
+        public ContentFixture _ { get; }
 
-        public GraphQLTests(CreatedAppFixture fixture)
+        public GraphQLTests(ContentFixture fixture)
         {
             _ = fixture;
         }
@@ -148,7 +148,7 @@ namespace TestSuite.ApiTests
                         Name = "cities",
                         Properties = new ReferencesFieldPropertiesDto
                         {
-                            SchemaIds = new List<Guid> { cities.Id }
+                            SchemaIds = new List<string> { cities.Id }
                         }
                     }
                 },
@@ -174,7 +174,7 @@ namespace TestSuite.ApiTests
                         Name = "states",
                         Properties = new ReferencesFieldPropertiesDto
                         {
-                            SchemaIds = new List<Guid> { states.Id }
+                            SchemaIds = new List<string> { states.Id }
                         }
                     }
                 },
